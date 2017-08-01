@@ -171,7 +171,8 @@ class Tokenizer():
                 accumulator.append(self.nextChar())
             else:
                 if len(accumulator):
-                    yield (NUMBER, "".join(accumulator))
+                    number = "".join(accumulator)
+                    yield (NUMBER, number)
                     break
                 else:
                     raise MedeaError("Invalid number")
