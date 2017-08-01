@@ -46,6 +46,7 @@ class Tokenizer():
     def peekChar(self):
         if self.peeked is None:
             self.peeked = self.nextChar()
+            self.read -= 1
         return self.peeked
 
     def tokenize(self):
@@ -71,7 +72,7 @@ class Tokenizer():
                 yield from self.tokenizeObject()
             elif char=='"' or char=="'":
                 yield from self.tokenizeString()
-            elif char.isdigit():
+            elif char.isdigit() or char=="-":
                 yield from self.tokenizeNumber()
             elif char=="t":
                 self.skipLiteral("true")
@@ -95,6 +96,7 @@ class Tokenizer():
             if char == "]":
                 self.nextChar()
                 yield (CLOSE, "]")
+                return
             else:
                 yield from self.tokenizeValue()
                 if self.peekChar() == ",":
@@ -151,6 +153,11 @@ class Tokenizer():
 
     def tokenizeNumber(self):
         accumulator = []
+        accumulator.append(self.nextChar())
+        if accumulator[-1]=='-':
+            accumulator.append(self.nextChar())
+        if not(accumulator[-1].isdigit()):
+            raise MedeaError("Numbers begin [0-9] after optional - sign")
         while True:
             peek = self.peekChar()
             if peek.isdigit() or peek in '.xeEb':
