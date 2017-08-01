@@ -20,6 +20,11 @@ def dumpTokens(source):
     tokenizer = Tokenizer(source)
     tokenizer.dumpTokens()
 
+def visit(source, callback):
+    tokenizer = Tokenizer(source)
+    for tokenPair in tokenizer.tokenize():
+        callback(*tokenPair)
+
 class Tokenizer():
     def __init__(self, source):
         self.source = source
@@ -127,7 +132,7 @@ class Tokenizer():
             elif peek == ",":
                 self.nextChar()
             else:
-                raise MedeaError("Pairs followed by , or }")
+                raise MedeaError("Pairs precede , or }")
 
     def tokenizeKey(self):
         return self.tokenizeString(KEY)
@@ -137,8 +142,12 @@ class Tokenizer():
         if not delimiter in QUOTECHARS:
             raise MedeaError("{} starts with {}".format(token, QUOTECHARS))
         accumulator = []
-        while self.peekChar() != delimiter:
+        peek = self.peekChar()
+        while peek != delimiter:
+            if peek == "\\": # backslash escaping means consume two chars
+                accumulator.append(self.nextChar())
             accumulator.append(self.nextChar())
+            peek = self.peekChar()
         self.nextChar() # drop delimiter
         string = "".join(accumulator)
         yield (token, string)
