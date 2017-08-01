@@ -21,8 +21,8 @@ def dumpTokens(source):
 
 def visit(source, callback):
     tokenizer = Tokenizer(source)
-    for tokenPair in tokenizer.tokenize():
-        callback(*tokenPair)
+    for tok, val in tokenizer.tokenize():
+        callback(tok, val)
 
 class Tokenizer():
     def __init__(self, source):
@@ -30,11 +30,11 @@ class Tokenizer():
         self.peeked = None
         self.read = -1
         sourceType = type(self.source)
-        if type(self.source) is io.TextIOWrapper:
-            def textFileGeneratorFactory(*a):
+        if sourceType is io.TextIOWrapper:  # or sourceType is io.FileIO or sourceType is io.BufferedReader:
+            def fileGeneratorFactory(*a):
                 while True:
-                    yield self.source.read(1)
-            self.generatorFactory = textFileGeneratorFactory
+                    yield source.read(1)
+            self.generatorFactory = fileGeneratorFactory
         else:
             raise MedeaError("No generatorFactory for {}".format(sourceType))
 
