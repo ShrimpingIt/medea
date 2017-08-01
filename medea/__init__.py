@@ -1,5 +1,4 @@
 from medea.agnostic import io
-import asyncio
 
 OPEN="open"
 CLOSE="close"
@@ -72,22 +71,22 @@ class Tokenizer():
         char = self.peekChar()
         if char is not None:
             if char=="[":
-                yield from self.tokenizeArray()
+                return (yield from self.tokenizeArray())
             elif char=="{":
-                yield from self.tokenizeObject()
+                return (yield from self.tokenizeObject())
             elif char=='"' or char=="'":
-                yield from self.tokenizeString()
+                return (yield from self.tokenizeString())
             elif char.isdigit() or char=="-":
-                yield from self.tokenizeNumber()
+                return (yield from self.tokenizeNumber())
             elif char=="t":
                 self.skipLiteral("true")
-                yield (BOOLEAN, True)
+                return (yield (BOOLEAN, True))
             elif char=="f":
                 self.skipLiteral("false")
-                yield (BOOLEAN, False)
+                return (yield (BOOLEAN, False))
             elif char=="n":
                 self.skipLiteral("null")
-                yield (NULL, None)
+                return (yield (NULL, None))
             else:
                 raise MedeaError("Unexpected character {}".format(char))
 
@@ -121,7 +120,14 @@ class Tokenizer():
                 yield (CLOSE,"}")
                 return
             elif peek in QUOTECHARS:
-                yield from self.tokenizePair()
+                # BEGIN 'tokenizePair'
+                yield from self.tokenizeKey()
+                yield from self.tokenizeSpace()
+                if self.nextChar() != ":":
+                    raise MedeaError("Expecting : after key")
+                yield from self.tokenizeSpace()
+                yield from self.tokenizeValue()
+                # END'tokenizePair'
             else:
                 raise MedeaError("Keys begin \" or '")
 
@@ -151,14 +157,6 @@ class Tokenizer():
         self.nextChar() # drop delimiter
         string = "".join(accumulator)
         yield (token, string)
-
-    def tokenizePair(self):
-        yield from self.tokenizeKey()
-        yield from self.tokenizeSpace()
-        if self.nextChar() != ":":
-            raise MedeaError("Expecting : after key")
-        yield from self.tokenizeSpace()
-        yield from self.tokenizeValue()
 
     def tokenizeNumber(self):
         accumulator = []
