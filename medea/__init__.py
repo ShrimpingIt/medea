@@ -28,20 +28,12 @@ class Tokenizer():
     def __init__(self, source):
         self.source = source
         self.peeked = None
-        self.read = -1
-        sourceType = type(self.source)
-        if sourceType is io.TextIOWrapper:  # or sourceType is io.FileIO or sourceType is io.BufferedReader:
-            def fileGeneratorFactory(*a):
-                while True:
-                    yield source.read(1)
-            self.generatorFactory = fileGeneratorFactory
-        else:
-            raise MedeaError("No generatorFactory for {}".format(sourceType))
+        self.charCount = -1
 
     def nextChar(self):
-        self.read += 1
+        self.charCount += 1
         if self.peeked is None:
-            return next(self.generator)
+            return self.source.read(1)
         else:
             waspeeked = self.peeked
             self.peeked = None
@@ -50,24 +42,18 @@ class Tokenizer():
     def peekChar(self):
         if self.peeked is None:
             self.peeked = self.nextChar()
-            self.read -= 1
+            self.charCount -= 1
         return self.peeked
 
     def tokenize(self):
-        self.generator = self.generatorFactory()
         yield from self.tokenizeValue()
 
     def dumpTokens(self):
         for token in self.tokenize():
             print(token)
 
-    def tokenizeSpace(self):
-        while self.peekChar().isspace():
-            self.nextChar()
-        yield from ()
-
     def tokenizeValue(self):
-        yield from self.tokenizeSpace()
+        self.skipSpace()
         char = self.peekChar()
         if char is not None:
             if char=="[":
@@ -95,12 +81,11 @@ class Tokenizer():
             raise MedeaError("Array should begin with [")
         yield (OPEN,"[")
         while True:
-            yield from self.tokenizeSpace()
+            self.skipSpace()
             char = self.peekChar()
             if char == "]":
                 self.nextChar()
-                yield (CLOSE, "]")
-                return
+                return (yield (CLOSE, "]"))
             else:
                 yield from self.tokenizeValue()
                 if self.peekChar() == ",":
@@ -113,25 +98,24 @@ class Tokenizer():
         else:
             yield (OPEN,"{")
         while True:
-            yield from self.tokenizeSpace()
+            self.skipSpace()
             peek = self.peekChar()
             if peek == "}":
                 self.nextChar()
-                yield (CLOSE,"}")
-                return
+                return (yield (CLOSE,"}"))
             elif peek in QUOTECHARS:
                 # BEGIN 'tokenizePair'
                 yield from self.tokenizeKey()
-                yield from self.tokenizeSpace()
+                self.skipSpace()
                 if self.nextChar() != ":":
                     raise MedeaError("Expecting : after key")
-                yield from self.tokenizeSpace()
+                self.skipSpace()
                 yield from self.tokenizeValue()
                 # END'tokenizePair'
             else:
                 raise MedeaError("Keys begin \" or '")
 
-            yield from self.tokenizeSpace()
+            self.skipSpace()
             peek = self.peekChar()
             if peek == "}":
                 pass
@@ -139,9 +123,6 @@ class Tokenizer():
                 self.nextChar()
             else:
                 raise MedeaError("Pairs precede , or }")
-
-    def tokenizeKey(self):
-        return self.tokenizeString(KEY)
 
     def tokenizeString(self, token=STRING):
         delimiter = self.nextChar()
@@ -157,6 +138,9 @@ class Tokenizer():
         self.nextChar() # drop delimiter
         string = "".join(accumulator)
         yield (token, string)
+
+    def tokenizeKey(self):
+        return self.tokenizeString(KEY)
 
     def tokenizeNumber(self):
         accumulator = []
@@ -176,6 +160,10 @@ class Tokenizer():
                     break
                 else:
                     raise MedeaError("Invalid number")
+
+    def skipSpace(self):  # TODO CH make consistent with skipLiteral - eliminate empty yield syntax
+        while self.peekChar().isspace():
+            self.nextChar()
 
     def skipLiteral(self, literal):
         for literalChar in literal:
