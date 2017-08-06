@@ -1,4 +1,4 @@
-from medea.agnostic import io
+from medea.agnostic import io,native,viper
 
 OPEN="open"
 CLOSE="close"
@@ -27,6 +27,10 @@ def visit(source, callback):
 class Tokenizer():
     def __init__(self, source):
         self.source = source
+        """
+        self.bufSize = 512
+        self.buf = None
+        """
         self.peeked = None
         self.charCount = -1
 
@@ -47,6 +51,26 @@ class Tokenizer():
 
     def tokenize(self):
         yield from self.tokenizeValue()
+
+    def tokenizeValuesNamed(self, key):
+        """Searches for the first item named 'key', tokenizes the
+        value, then repeats the search from that point"""
+        while True:
+            delimiter = self.nextChar()
+            if delimiter in QUOTECHARS:
+                for char in key:
+                    if self.nextChar() != char:
+                        break
+                else:
+                    if self.nextChar() != delimiter:
+                        continue
+                    self.skipSpace()
+                    if self.nextChar() != ":":
+                        continue
+                    self.skipSpace()
+                    yield from self.tokenizeValue()
+            elif delimiter is None:
+                break
 
     def dumpTokens(self):
         for token in self.tokenize():
