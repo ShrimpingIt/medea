@@ -13,7 +13,12 @@ assert hasattr(sys, "implementation"), "FATAL: Cannot run in Python 2"
 if sys.implementation.name == "micropython":
     import uos as os
     import uio as io
-    from micropython import native, viper
+    import gc
+    """
+    import micropython
+    native = micropython.native
+    viper = micropython.viper
+    """
 else:
     import os
     import io
