@@ -35,7 +35,6 @@ class Tokenizer():
 
     def peekChar(self):
         if self.bufPos == len(self.buf):
-            gc.collect()
             self.buf = self.source.read(self.bufSize)
             if self.buf is "":
                 return None
@@ -49,22 +48,63 @@ class Tokenizer():
     def tokenizeValuesNamed(self, key):
         """Searches for the first item named 'key', tokenizes the
         value, then repeats the search from that point"""
+        buf = None
+        bufPos = None
+        bufLen = None
+
+        def refill():
+            nonlocal buf, bufPos, bufLen
+            buf = self.source.read(self.bufSize)
+            if buf is "":
+                raise StopIteration()
+            else:
+                bufPos = 0
+                bufLen = len(buf)
+
+        refill()
+
         while True:
-            delimiter = self.nextChar()
-            if delimiter is "'" or delimiter is '"':
+            delimiter = buf[bufPos]
+            bufPos += 1
+            if bufPos == bufLen:
+                refill()
+            if delimiter is '"' or delimiter is "'":
                 for char in key:
-                    if self.nextChar() != char:
-                        break
+                    try:
+                        if buf[bufPos] != char:
+                            break
+                        else:
+                            pass
+                    finally:
+                        bufPos += 1
+                        if bufPos == bufLen:
+                            refill()
                 else:
-                    if self.nextChar() != delimiter:
-                        continue
-                    self.skipSpace()
-                    if self.nextChar() != ":":
-                        continue
-                    self.skipSpace()
+                    try:
+                        if buf[bufPos] is not delimiter:
+                            continue
+                    finally:
+                        bufPos += 1
+                        if bufPos == bufLen:
+                            refill()
+                    while buf[bufPos].isspace():
+                        bufPos += 1
+                        if bufPos == bufLen:
+                            refill()
+                    try:
+                        if buf[bufPos] is not ":":
+                            continue
+                    finally:
+                        bufPos += 1
+                        if bufPos == bufLen:
+                            refill()
+                    while buf[bufPos].isspace():
+                        bufPos += 1
+                        if bufPos == bufLen:
+                            refill()
+                    self.buf = buf
+                    self.bufPos = bufPos
                     yield from self.tokenizeValue()
-            elif delimiter is None:
-                break
 
     def dumpTokens(self):
         for token in self.tokenize():
