@@ -45,12 +45,15 @@ class Tokenizer():
     def tokenize(self):
         yield from self.tokenizeValue()
 
-    def tokenizeValuesNamed(self, key):
+    def generateFromNamed(self, names, generatorFactory):
         """Searches for the first item named 'key', tokenizes the
         value, then repeats the search from that point"""
         buf = None
         bufPos = None
         bufLen = None
+
+        namesLen = len(names)
+        namesEnd = [len(name) - 1 for name in names]
 
         def refill():
             nonlocal buf, bufPos, bufLen
@@ -69,42 +72,66 @@ class Tokenizer():
             if bufPos == bufLen:
                 refill()
             if delimiter is '"' or delimiter is "'":
-                for char in key:
-                    try:
-                        if buf[bufPos] != char:
-                            break
-                        else:
-                            pass
-                    finally:
-                        bufPos += 1
-                        if bufPos == bufLen:
-                            refill()
-                else:
-                    try:
-                        if buf[bufPos] is not delimiter:
-                            continue
-                    finally:
-                        bufPos += 1
-                        if bufPos == bufLen:
-                            refill()
-                    while buf[bufPos].isspace():
-                        bufPos += 1
-                        if bufPos == bufLen:
-                            refill()
-                    try:
-                        if buf[bufPos] is not ":":
-                            continue
-                    finally:
-                        bufPos += 1
-                        if bufPos == bufLen:
-                            refill()
-                    while buf[bufPos].isspace():
-                        bufPos += 1
-                        if bufPos == bufLen:
-                            refill()
-                    self.buf = buf
-                    self.bufPos = bufPos
-                    yield from self.tokenizeValue()
+                candidates = names
+                candidatesEnd = namesEnd
+                candidatesLen = namesLen
+                charPos = 0
+                match = None
+                while match is None:
+                    candidatePos = candidatesLen
+                    while candidatePos > 0:
+                        candidatePos -= 1
+                        name = candidates[candidatePos]
+                        if charPos == candidatesEnd[candidatePos]:
+                            match = name
+                        elif name[charPos] != buf[bufPos]:
+                            if candidatesLen == 1:
+                                match = ""
+                            else:
+                                if candidates is names: # lazy duplicate list
+                                    candidates = list(names)
+                                    candidatesEnd = list(namesEnd)
+                                del candidates[candidatePos]
+                                del candidatesEnd[candidatePos]
+                                candidatesLen = len(candidates)
+                    charPos += 1
+                    bufPos += 1
+                    if bufPos == bufLen:
+                        refill()
+                if match is "":
+                    continue
+                try:
+                    if buf[bufPos] is not delimiter:
+                        continue
+                finally:
+                    bufPos += 1
+                    if bufPos == bufLen:
+                        refill()
+                while buf[bufPos].isspace():
+                    bufPos += 1
+                    if bufPos == bufLen:
+                        refill()
+                try:
+                    if buf[bufPos] is not ":":
+                        continue
+                finally:
+                    bufPos += 1
+                    if bufPos == bufLen:
+                        refill()
+                while buf[bufPos].isspace():
+                    bufPos += 1
+                    if bufPos == bufLen:
+                        refill()
+                self.buf = buf
+                self.bufPos = bufPos
+                yield from generatorFactory(match)
+
+    def tokenizeValuesNamed(self, names):
+        if type(names) is str:
+            names = [names]
+        def generatorFactory(name):
+            yield from self.tokenizeValue()
+        return self.generateFromNamed(names, generatorFactory)
 
     def dumpTokens(self):
         for token in self.tokenize():
