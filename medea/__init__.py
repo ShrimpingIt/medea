@@ -1,4 +1,4 @@
-from medea.agnostic import io,native,viper
+from medea.agnostic import io, gc
 
 OPEN="open"
 CLOSE="close"
@@ -7,9 +7,6 @@ STRING="string"
 NUMBER="number"
 BOOLEAN="boolean"
 NULL="null"
-
-KEYCHARS = ('$','_')
-QUOTECHARS = ("'", '"')
 
 class MedeaError(AssertionError):
     def __init__(self, *a, **k):
@@ -27,27 +24,24 @@ def visit(source, callback):
 class Tokenizer():
     def __init__(self, source):
         self.source = source
-        """
         self.bufSize = 512
-        self.buf = None
-        """
-        self.peeked = None
-        self.charCount = -1
+        self.bufPos = 0
+        self.buf = ""
 
     def nextChar(self):
-        self.charCount += 1
-        if self.peeked is None:
-            return self.source.read(1)
-        else:
-            waspeeked = self.peeked
-            self.peeked = None
-            return waspeeked
+        char = self.peekChar()
+        self.bufPos += 1
+        return char
 
     def peekChar(self):
-        if self.peeked is None:
-            self.peeked = self.nextChar()
-            self.charCount -= 1
-        return self.peeked
+        if self.bufPos == len(self.buf):
+            gc.collect()
+            self.buf = self.source.read(self.bufSize)
+            if self.buf is "":
+                return None
+            else:
+                self.bufPos = 0
+        return self.buf[self.bufPos]
 
     def tokenize(self):
         yield from self.tokenizeValue()
@@ -57,7 +51,7 @@ class Tokenizer():
         value, then repeats the search from that point"""
         while True:
             delimiter = self.nextChar()
-            if delimiter in QUOTECHARS:
+            if delimiter is "'" or delimiter is '"':
                 for char in key:
                     if self.nextChar() != char:
                         break
@@ -80,21 +74,21 @@ class Tokenizer():
         self.skipSpace()
         char = self.peekChar()
         if char is not None:
-            if char=="[":
+            if char is "[":
                 return (yield from self.tokenizeArray())
-            elif char=="{":
+            elif char is "{":
                 return (yield from self.tokenizeObject())
-            elif char=='"' or char=="'":
+            elif char is '"' or char is "'":
                 return (yield from self.tokenizeString())
-            elif char.isdigit() or char=="-":
+            elif char.isdigit() or char is "-":
                 return (yield from self.tokenizeNumber())
-            elif char=="t":
+            elif char is "t":
                 self.skipLiteral("true")
                 return (yield (BOOLEAN, True))
-            elif char=="f":
+            elif char is "f":
                 self.skipLiteral("false")
                 return (yield (BOOLEAN, False))
-            elif char=="n":
+            elif char is "n":
                 self.skipLiteral("null")
                 return (yield (NULL, None))
             else:
@@ -107,12 +101,12 @@ class Tokenizer():
         while True:
             self.skipSpace()
             char = self.peekChar()
-            if char == "]":
+            if char is "]":
                 self.nextChar()
                 return (yield (CLOSE, "]"))
             else:
                 yield from self.tokenizeValue()
-                if self.peekChar() == ",":
+                if self.peekChar() is ",":
                     self.nextChar()
                     continue
 
@@ -124,10 +118,10 @@ class Tokenizer():
         while True:
             self.skipSpace()
             peek = self.peekChar()
-            if peek == "}":
+            if peek is "}":
                 self.nextChar()
                 return (yield (CLOSE,"}"))
-            elif peek in QUOTECHARS:
+            elif peek is "'" or peek is '"' :
                 # BEGIN 'tokenizePair'
                 yield from self.tokenizeKey()
                 self.skipSpace()
@@ -141,21 +135,21 @@ class Tokenizer():
 
             self.skipSpace()
             peek = self.peekChar()
-            if peek == "}":
+            if peek is  "}":
                 pass
-            elif peek == ",":
+            elif peek is ",":
                 self.nextChar()
             else:
                 raise MedeaError("Pairs precede , or }")
 
     def tokenizeString(self, token=STRING):
         delimiter = self.nextChar()
-        if not delimiter in QUOTECHARS:
-            raise MedeaError("{} starts with {}".format(token, QUOTECHARS))
+        if not(delimiter is "'" or delimiter is '"'):
+            raise MedeaError("{} starts with ' or \"".format(token))
         accumulator = []
         peek = self.peekChar()
         while peek != delimiter:
-            if peek == "\\": # backslash escaping means consume two chars
+            if peek is "\\": # backslash escaping means consume two chars
                 accumulator.append(self.nextChar())
             accumulator.append(self.nextChar())
             peek = self.peekChar()
@@ -169,7 +163,7 @@ class Tokenizer():
     def tokenizeNumber(self):
         accumulator = []
         accumulator.append(self.nextChar())
-        if accumulator[-1]=='-':
+        if accumulator[-1]is'-':
             accumulator.append(self.nextChar())
         if not(accumulator[-1].isdigit()):
             raise MedeaError("Numbers begin [0-9] after optional - sign")
