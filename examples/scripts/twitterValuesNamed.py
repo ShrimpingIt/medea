@@ -1,9 +1,9 @@
-from medea import Tokenizer
+from medea import Tokenizer,createFileFactory
 from examples.scripts import timeit
 
 def generateTweets():
-    source = open('examples/data/trumpTweet.json')
-    tokenizer = Tokenizer(source)
+    sourceFactory = createFileFactory('examples/data/trumpTweet.json')
+    tokenizer = Tokenizer(sourceFactory)
 
     ids = []
     texts = []
