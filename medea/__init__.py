@@ -2,11 +2,30 @@ from medea.agnostic import io, gc
 
 OPEN="open"
 CLOSE="close"
+OBJECT="object"
+ARRAY="object"
 KEY="key"
 STRING="string"
 NUMBER="number"
 BOOLEAN="boolean"
 NULL="null"
+
+singleQuoteByte = ord("'")
+doubleQuoteByte = ord('"')
+backslashByte = ord("\\")
+openObjectByte = ord('{')
+closeObjectByte = ord('}')
+openArrayByte = ord('[')
+closeArrayByte = ord(']')
+colonByte = ord(':')
+commaByte = ord(',')
+firstTrueByte = ord('t')
+firstFalseByte = ord('f')
+firstNullByte = ord('n')
+minusByte = ord('-')
+numberMetaBytes = b'.xeEb'
+spaceBytes = b' \n\t\r'
+digitBytes = b'0123456789'
 
 class MedeaError(AssertionError):
     def __init__(self, *a, **k):
@@ -23,26 +42,25 @@ def visit(source, callback):
 
 def createFileFactory(path):
     def factory():
-        return open(path, "rt")
+        return open(path, "rb")
     return factory
 
 class Tokenizer():
-    def __init__(self, sourceFactory):
+    def __init__(self, sourceFactory, bufSize=512):
         self.sourceFactory = sourceFactory
         self.source = None
-        self.bufSize = 512
         self.bufPos = 0
-        self.buf = ""
+        self.buf = bytearray(bufSize)
 
-    def nextChar(self):
-        char = self.peekChar()
+    def nextByte(self):
+        byte = self.peekByte()
         self.bufPos += 1
-        return char
+        return byte
 
-    def peekChar(self):
+    def peekByte(self):
         if self.bufPos == len(self.buf):
-            self.buf = self.source.read(self.bufSize)
-            if self.buf is "":
+            count = self.source.readinto(self.buf)
+            if count == 0:
                 return None
             else:
                 self.bufPos = 0
@@ -56,10 +74,12 @@ class Tokenizer():
     def generateFromNamed(self, names, generatorFactory):
         """Searches for the first item named 'key', tokenizes the
         value, then repeats the search from that point"""
+        names = [bytes(name, 'ascii') for name in names]
+
         self.source = self.sourceFactory()
         with self.source:
 
-            buf = None
+            buf = self.buf
             bufPos = None
             bufLen = None
 
@@ -68,12 +88,14 @@ class Tokenizer():
 
             def refill():
                 nonlocal buf, bufPos, bufLen
-                buf = self.source.read(self.bufSize)
-                if buf is "":
+                # REFILL START
+                count = self.source.readinto(buf)
+                if count is 0:
                     raise StopIteration()
                 else:
                     bufPos = 0
                     bufLen = len(buf)
+                # REFILL END
 
             refill()
 
@@ -82,35 +104,35 @@ class Tokenizer():
                 bufPos += 1
                 if bufPos == bufLen:
                     refill()
-                if delimiter is '"' or delimiter is "'":
+                if delimiter is singleQuoteByte or delimiter is doubleQuoteByte:
                     candidates = names
                     candidatesEnd = namesEnd
                     candidatesLen = namesLen
                     charPos = 0
                     match = None
-                    while match is None:
+                    while match is None and candidatesLen > 0:
                         candidatePos = candidatesLen
-                        while candidatePos > 0:
+                        while match is None and candidatePos > 0:
                             candidatePos -= 1
-                            name = candidates[candidatePos]
                             if charPos == candidatesEnd[candidatePos]:
-                                match = name
-                            elif name[charPos] != buf[bufPos]:
-                                if candidatesLen == 1:
-                                    match = ""
+                                match = candidates[candidatePos]
+                            elif candidates[candidatePos][charPos] != buf[bufPos]:
+                                candidatesLen -= 1
+                                if candidatesLen == 0:
+                                    break
                                 else:
-                                    if candidates is names: # lazy duplicate list
+                                    if candidates is names: # lazy duplicate list then excise candidate
                                         candidates = list(names)
                                         candidatesEnd = list(namesEnd)
                                     del candidates[candidatePos]
                                     del candidatesEnd[candidatePos]
-                                    candidatesLen = len(candidates)
                         charPos += 1
                         bufPos += 1
                         if bufPos == bufLen:
                             refill()
-                    if match is "":
-                        continue
+                    else: # either match found or candidates eliminated
+                        if match is None:
+                            continue
                     try:
                         if buf[bufPos] is not delimiter:
                             continue
@@ -118,24 +140,24 @@ class Tokenizer():
                         bufPos += 1
                         if bufPos == bufLen:
                             refill()
-                    while buf[bufPos].isspace():
+                    while buf[bufPos] in spaceBytes:
                         bufPos += 1
                         if bufPos == bufLen:
                             refill()
                     try:
-                        if buf[bufPos] is not ":":
+                        if buf[bufPos] is not colonByte:
                             continue
                     finally:
                         bufPos += 1
                         if bufPos == bufLen:
                             refill()
-                    while buf[bufPos].isspace():
+                    while buf[bufPos] in spaceBytes:
                         bufPos += 1
                         if bufPos == bufLen:
                             refill()
                     self.buf = buf
                     self.bufPos = bufPos
-                    yield from generatorFactory(match)
+                    yield from generatorFactory(match.decode('ascii'))
 
     def tokenizeValuesNamed(self, names):
         if type(names) is str:
@@ -150,118 +172,114 @@ class Tokenizer():
 
     def tokenizeValue(self):
         self.skipSpace()
-        char = self.peekChar()
-        if char is not None:
-            if char is "[":
+        byte = self.peekByte()
+        if byte is not None:
+            if byte is openArrayByte:
                 return (yield from self.tokenizeArray())
-            elif char is "{":
+            elif byte is openObjectByte:
                 return (yield from self.tokenizeObject())
-            elif char is '"' or char is "'":
+            elif byte is singleQuoteByte or byte is doubleQuoteByte:
                 return (yield from self.tokenizeString())
-            elif char.isdigit() or char is "-":
+            elif byte in digitBytes or byte is minusByte:
                 return (yield from self.tokenizeNumber())
-            elif char is "t":
-                self.skipLiteral("true")
+            elif byte is firstTrueByte:
+                self.skipLiteral(b"true")
                 return (yield (BOOLEAN, True))
-            elif char is "f":
-                self.skipLiteral("false")
+            elif byte is firstFalseByte:
+                self.skipLiteral(b"false")
                 return (yield (BOOLEAN, False))
-            elif char is "n":
-                self.skipLiteral("null")
+            elif byte is firstNullByte:
+                self.skipLiteral(b"null")
                 return (yield (NULL, None))
             else:
-                raise MedeaError("Unexpected character {}".format(char))
+                raise MedeaError("Unexpected character {}".format(byte))
 
     def tokenizeArray(self):
-        if self.nextChar() != "[":
+        if self.nextByte() != openArrayByte:
             raise MedeaError("Array should begin with [")
-        yield (OPEN,"[")
+        yield (OPEN,ARRAY)
         while True:
             self.skipSpace()
-            char = self.peekChar()
-            if char is "]":
-                self.nextChar()
-                return (yield (CLOSE, "]"))
+            char = self.peekByte()
+            if char is closeArrayByte:
+                self.nextByte()
+                return (yield (CLOSE, ARRAY))
             else:
                 yield from self.tokenizeValue()
-                if self.peekChar() is ",":
-                    self.nextChar()
+                if self.peekByte() is commaByte:
+                    self.nextByte()
                     continue
 
     def tokenizeObject(self):
-        if self.nextChar() !="{":
+        if self.nextByte() != openObjectByte:
             raise MedeaError("Objects begin {")
         else:
-            yield (OPEN,"{")
+            yield (OPEN,OBJECT)
         while True:
             self.skipSpace()
-            peek = self.peekChar()
-            if peek is "}":
-                self.nextChar()
-                return (yield (CLOSE,"}"))
-            elif peek is "'" or peek is '"' :
-                # BEGIN 'tokenizePair'
+            peek = self.peekByte()
+            if peek is closeObjectByte:
+                self.nextByte()
+                return (yield (CLOSE,OBJECT))
+            elif peek is singleQuoteByte or peek is doubleQuoteByte:
                 yield from self.tokenizeKey()
                 self.skipSpace()
-                if self.nextChar() != ":":
+                if self.nextByte() is not colonByte:
                     raise MedeaError("Expecting : after key")
                 self.skipSpace()
                 yield from self.tokenizeValue()
-                # END'tokenizePair'
             else:
                 raise MedeaError("Keys begin \" or '")
 
             self.skipSpace()
-            peek = self.peekChar()
-            if peek is  "}":
+            peek = self.peekByte()
+            if peek is closeObjectByte:
                 pass
-            elif peek is ",":
-                self.nextChar()
+            elif peek is commaByte:
+                self.nextByte()
             else:
                 raise MedeaError("Pairs precede , or }")
 
     def tokenizeString(self, token=STRING):
-        delimiter = self.nextChar()
-        if not(delimiter is "'" or delimiter is '"'):
+        delimiter = self.nextByte()
+        if not(delimiter is singleQuoteByte or delimiter is doubleQuoteByte):
             raise MedeaError("{} starts with ' or \"".format(token))
-        accumulator = []
-        peek = self.peekChar()
+        accumulator = bytearray()
+        peek = self.peekByte()
         while peek != delimiter:
-            if peek is "\\": # backslash escaping means consume two chars
-                accumulator.append(self.nextChar())
-            accumulator.append(self.nextChar())
-            peek = self.peekChar()
-        self.nextChar() # drop delimiter
-        string = "".join(accumulator)
-        yield (token, string)
+            if peek is backslashByte: # backslash escaping means consume two chars
+                accumulator.append(self.nextByte())
+            accumulator.append(self.nextByte())
+            peek = self.peekByte()
+        self.nextByte() # drop delimiter
+        yield (token, bytes(accumulator).decode('ascii'))
 
     def tokenizeKey(self):
         return self.tokenizeString(KEY)
 
     def tokenizeNumber(self):
         accumulator = []
-        accumulator.append(self.nextChar())
-        if accumulator[-1]is'-':
-            accumulator.append(self.nextChar())
-        if not(accumulator[-1].isdigit()):
+        accumulator.append(self.nextByte())
+        if accumulator[-1] is minusByte:
+            accumulator.append(self.nextByte())
+        if not(accumulator[-1] in digitBytes):
             raise MedeaError("Numbers begin [0-9] after optional - sign")
         while True:
-            peek = self.peekChar()
-            if peek.isdigit() or peek in '.xeEb':
-                accumulator.append(self.nextChar())
+            peek = self.peekByte()
+            if peek in digitBytes or peek in numberMetaBytes:
+                accumulator.append(self.nextByte())
             else:
                 if len(accumulator):
-                    number = "".join(accumulator)
-                    yield (NUMBER, number)
+                    yield (NUMBER, bytes(accumulator).decode('ascii'))
                     break
                 else:
                     raise MedeaError("Invalid number")
 
     def skipSpace(self):  # TODO CH make consistent with skipLiteral - eliminate empty yield syntax
-        while self.peekChar().isspace():
-            self.nextChar()
+        while self.peekByte() in spaceBytes:
+            self.nextByte()
 
-    def skipLiteral(self, literal):
-        for literalChar in literal:
-            if self.nextChar() != literalChar:
-                raise MedeaError("Expecting keyword {}" + literal)
+    def skipLiteral(self, bytesLike):
+        for literalByte in bytesLike:
+            if self.nextByte() != literalByte:
+                raise MedeaError("Expecting keyword {}" + bytesLike)
