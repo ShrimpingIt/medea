@@ -88,14 +88,12 @@ class Tokenizer():
 
             def refill():
                 nonlocal buf, bufPos, bufLen
-                # REFILL START
                 count = self.source.readinto(buf)
                 if count is 0:
                     raise StopIteration()
                 else:
                     bufPos = 0
                     bufLen = len(buf)
-                # REFILL END
 
             refill()
 
