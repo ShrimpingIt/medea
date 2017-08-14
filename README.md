@@ -1,6 +1,6 @@
 # Medea - Low-memory-overhead JSON tokenizer
 
-[Medea](https://en.wikipedia.org/wiki/Medea) was the sorcerer wife of [Jason](https://en.wikipedia.org/wiki/Jason) who was famed for killing off her own children. It is a fitting name for a low-overhead JSON tokenizer for Micropython. In this implementation, no children survive at all. Only a series of SAX-style notifications are made as the JSON family 'tree' is traversed.
+[Medea](https://en.wikipedia.org/wiki/Medea) was the sorcerer wife of [Jason](https://en.wikipedia.org/wiki/Jason) who was famed for killing off her own children. It is a fitting name for a low-overhead JSON tokenizer for Micropython. In this implementation, no children survive at all. Only a series of [SAX-style](https://en.wikipedia.org/wiki/Simple_API_for_XML) notifications are made as the JSON family 'tree' is traversed.
 
 ## Purpose
 
