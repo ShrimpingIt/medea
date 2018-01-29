@@ -4,7 +4,7 @@ Medea can tokenize an arbitrary length of JSON with only a single byte of buffer
 
 ## Examples
 
-Two sample JSON API results from Twitter and from OpenWeatherMap have been included in the repository and can be successfully processed into tokens by the library as demonstrated by, for example...
+Two sample JSON API results from Twitter and from OpenWeatherMap have been included in the repository and can be successfully processed into tokens by the library even on an ESP8266 as demonstrated by, for example...
 
 ```
 import examples.scripts.trumpTweet
