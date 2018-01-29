@@ -58,6 +58,7 @@ class Tokenizer():
         return byte
 
     def peekByte(self):
+        # substitute self.bufSize for len(self.buf)
         if self.bufPos == len(self.buf):
             count = self.source.readinto(self.buf)
             if count == 0:
@@ -72,8 +73,8 @@ class Tokenizer():
             yield from self.tokenizeValue()
 
     def generateFromNamed(self, names, generatorFactory):
-        """Searches for the first item named 'key', tokenizes the
-        value, then repeats the search from that point"""
+        """Searches for the first item named 'key' (without full parsing all JSON)
+        tokenizes the value found under key, then repeats the search"""
         names = [bytes(name, 'ascii') for name in names]
 
         self.source = self.sourceFactory()
@@ -101,7 +102,8 @@ class Tokenizer():
 
             while True:
                 delimiter = buf[bufPos]
-                bufPos += 1
+                # make this repeated stanza a single liner bufPos += 1; if bufPos == bufLen: refill()
+                bufPos += 1 
                 if bufPos == bufLen:
                     refill()
                 if delimiter is singleQuoteByte or delimiter is doubleQuoteByte:
@@ -114,7 +116,7 @@ class Tokenizer():
                         candidatePos = candidatesLen
                         while match is None and candidatePos > 0:
                             candidatePos -= 1
-                            if charPos == candidatesEnd[candidatePos]:
+                            if charPos == candidatesEnd[candidatePos]: # TODO, accepts one character too early? (candidatesEnd is last index, not len)
                                 match = candidates[candidatePos]
                             elif candidates[candidatePos][charPos] != buf[bufPos]:
                                 candidatesLen -= 1
@@ -157,7 +159,7 @@ class Tokenizer():
                             refill()
                     self.buf = buf
                     self.bufPos = bufPos
-                    yield from generatorFactory(match.decode('ascii'))
+                    yield from generatorFactory(match.decode('ascii')) # TODO avoid decode call
 
     def tokenizeValuesNamed(self, names):
         if type(names) is str:
@@ -207,6 +209,7 @@ class Tokenizer():
             else:
                 yield from self.tokenizeValue()
                 if self.peekByte() is commaByte:
+                    # substitute direct increment of bufPos
                     self.nextByte()
                     continue
 
