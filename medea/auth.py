@@ -1,3 +1,3 @@
-wifiUser = ""
+wifiName = ""
 wifiPass = ""
 bearerHeader = ""
