@@ -1,0 +1,3 @@
+wifiUser = ""
+wifiPass = ""
+bearerHeader = ""
