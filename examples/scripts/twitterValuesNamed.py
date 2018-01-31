@@ -19,10 +19,11 @@ def generateTweets():
             pass
         yield from ()
 
-    # yield forces the generator factories to be invoked until stream empty, but actually generates ()
+    # yield forces the generator factories to be invoked, populating ids and texts
+    # until stream empty, but actually generates ()
     yield from tokenizer.generateFromNamed(["id","text","user"], generatorFactory)
 
-    # this is doing the real yielding
+    # this is doing the real yielding of value pairs
     yield from zip(ids, texts)
 
 def run():
