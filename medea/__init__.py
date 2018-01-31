@@ -23,6 +23,7 @@ firstTrueByte = ord('t')
 firstFalseByte = ord('f')
 firstNullByte = ord('n')
 minusByte = ord('-')
+
 numberMetaBytes = b'.xeEb'
 spaceBytes = b' \n\t\r'
 digitBytes = b'0123456789'
@@ -46,6 +47,21 @@ def createFileFactory(path):
     return factory
 
 class Tokenizer():
+    """This class wraps a source of bytes, like a file or a socket, and can tokenize it as a JSON value, (object, array or primitive)
+        on each call to tokenize, the sourceFactory is called to initialise a new source, which must implement the 'readinto()' method.
+        Bytes are then read in buffers of up to bufSize characters, which are traversed for JSON symbols, triggering JSON value events
+        pairs composed of (token, value) pairs as follows.
+        (OPEN, OBJECT)          : a new object, to be followed by a sequence of zero or more pairs like (KEY, keybytes) <JSON VALUE EVENTS>
+        (CLOSE, OBJECT)         : completion of all the key/value pairs of previously opened object
+        (OPEN, ARRAY)           : a new array, to be followed by a sequence of zero or more <JSON VALUE EVENTS>
+        (CLOSE, ARRAY)
+        (KEY, keyBytes)         : the next value which follows is a value embedded in an object
+        (NUMBER, numberBytes)
+        (BOOLEAN, booleanBytes)
+        (STRING, stringBytes)
+        (NULL, nullBytes)
+    """
+
     def __init__(self, sourceFactory, bufSize=512):
         self.sourceFactory = sourceFactory
         self.source = None
