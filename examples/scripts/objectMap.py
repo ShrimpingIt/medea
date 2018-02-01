@@ -1,2 +1,2 @@
-from medea import dumpTokens
-dumpTokens(open('examples/data/objectMap.json'))
+from medea import createFileStreamGenerator, dumpTokens
+dumpTokens(createFileStreamGenerator('examples/data/objectMap.json'))

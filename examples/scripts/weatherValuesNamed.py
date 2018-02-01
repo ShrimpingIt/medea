@@ -1,9 +1,8 @@
-from medea import Tokenizer,createFileFactory
+from medea import Tokenizer,createFileStreamGenerator
 from examples.scripts import timeit
 
 def run():
-    sourceFactory = createFileFactory('examples/data/weathermap.json')
-    tokenizer = Tokenizer(sourceFactory)
+    tokenizer = Tokenizer(createFileStreamGenerator('examples/data/weathermap.json'))
 
     for tok, val in tokenizer.tokenizeValuesNamed("rain"):
         print(tok, val)

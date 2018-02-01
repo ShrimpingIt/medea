@@ -1,2 +1,2 @@
-from medea import dumpTokens
-dumpTokens(open('examples/data/emptyArray.json'))
+from medea import createFileStreamGenerator, dumpTokens
+dumpTokens(createFileStreamGenerator('examples/data/emptyArray.json'))
