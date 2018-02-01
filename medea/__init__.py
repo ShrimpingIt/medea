@@ -3,7 +3,7 @@ from medea.agnostic import io, gc
 OPEN="open"
 CLOSE="close"
 OBJECT="object"
-ARRAY="object"
+ARRAY="array"
 KEY="key"
 STRING="string"
 NUMBER="number"
@@ -32,19 +32,38 @@ class MedeaError(AssertionError):
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
 
-def dumpTokens(source):
-    tokenizer = Tokenizer(source)
+def dumpTokens(streamGenerator):
+    tokenizer = Tokenizer(streamGenerator)
     tokenizer.dumpTokens()
 
-def visit(source, callback):
-    tokenizer = Tokenizer(source)
+def visit(streamGenerator, callback):
+    tokenizer = Tokenizer(streamGenerator)
     for tok, val in tokenizer.tokenize():
         callback(tok, val)
 
-def createFileFactory(path):
-    def factory():
-        return open(path, "rb")
-    return factory
+defaultBufferSize = 512
+
+
+def createFileStreamGenerator(path, buffer=None):
+    "A generator you can send False to peek (read without incrementing), None or True increments by default"
+    def fileStreamGenerator():
+        nonlocal buffer
+        if buffer is None:
+            buffer = bytearray(defaultBufferSize)
+        consumed = False
+        with open(path, "rb") as f:
+            while True:
+                count = f.readinto(buffer)
+                pos = 0
+                if count > 0:
+                    while pos < count:
+                        nextByte = buffer[pos]
+                        if consumed:
+                            pos += 1
+                        consumed = yield nextByte
+                else:
+                    break
+    return fileStreamGenerator
 
 class Tokenizer():
     """This class wraps a source of bytes, like a file or a socket, and can tokenize it as a JSON value, (object, array or primitive)
@@ -62,116 +81,83 @@ class Tokenizer():
         (NULL, nullBytes)
     """
 
-    def __init__(self, sourceFactory, bufSize=512):
-        self.sourceFactory = sourceFactory
-        self.source = None
-        self.bufPos = 0
-        self.buf = bytearray(bufSize)
+    def __init__(self, streamGenerator):
+        self.streamGenerator = streamGenerator
+        self.stream = None
+
+    def unsetStream(self):
+        if self.stream is not None:
+            self.stream.throw(StopIteration)
+            self.stream = None
+
+    def resetStream(self):
+        self.unsetStream()
+        self.stream = self.streamGenerator()
+        self.stream.send(None)
 
     def nextByte(self):
-        byte = self.peekByte()
-        self.bufPos += 1
-        return byte
+        return self.stream.send(True) # get byte, increment position by 1
 
     def peekByte(self):
-        if self.bufPos == len(self.buf):
-            count = self.source.readinto(self.buf)
-            if count == 0:
-                return None
-            else:
-                self.bufPos = 0
-        return self.buf[self.bufPos]
+        return self.stream.send(False) # get byte, do not change position
 
     def tokenize(self):
-        self.source = self.sourceFactory()
-        with self.source:
-            yield from self.tokenizeValue()
+        self.resetStream()
+        yield from self.tokenizeValue()
 
     def generateFromNamed(self, names, generatorFactory):
         """Searches for the first item named 'key', tokenizes the
         value, then repeats the search from that point"""
+        self.resetStream()
+
         names = [bytes(name, 'ascii') for name in names]
+        namesLen = len(names)
+        namesEnds = [len(name) - 1 for name in names]
 
-        self.source = self.sourceFactory()
-        with self.source:
-
-            buf = self.buf
-            bufPos = None
-            bufLen = None
-
-            namesLen = len(names)
-            namesEnd = [len(name) - 1 for name in names]
-
-            def refill():
-                nonlocal buf, bufPos, bufLen
-                count = self.source.readinto(buf)
-                if count is 0:
-                    raise StopIteration()
-                else:
-                    bufPos = 0
-                    bufLen = len(buf)
-
-            refill()
-
-            while True:
-                delimiter = buf[bufPos]
-                bufPos += 1
-                if bufPos == bufLen:
-                    refill()
-                if delimiter is singleQuoteByte or delimiter is doubleQuoteByte:
-                    candidates = names
-                    candidatesEnd = namesEnd
-                    candidatesLen = namesLen
-                    charPos = 0
-                    match = None
-                    while match is None and candidatesLen > 0:
-                        candidatePos = candidatesLen
-                        while match is None and candidatePos > 0:
-                            candidatePos -= 1
-                            if charPos == candidatesEnd[candidatePos]:
-                                match = candidates[candidatePos]
-                            elif candidates[candidatePos][charPos] != buf[bufPos]:
-                                candidatesLen -= 1
-                                if candidatesLen == 0:
-                                    break
-                                else:
-                                    if candidates is names: # lazy duplicate list then excise candidate
-                                        candidates = list(names)
-                                        candidatesEnd = list(namesEnd)
-                                    del candidates[candidatePos]
-                                    del candidatesEnd[candidatePos]
-                        charPos += 1
-                        bufPos += 1
-                        if bufPos == bufLen:
-                            refill()
-                    else: # either match found or candidates eliminated
-                        if match is None:
-                            continue
-                    try:
-                        if buf[bufPos] is not delimiter:
-                            continue
-                    finally:
-                        bufPos += 1
-                        if bufPos == bufLen:
-                            refill()
-                    while buf[bufPos] in spaceBytes:
-                        bufPos += 1
-                        if bufPos == bufLen:
-                            refill()
-                    try:
-                        if buf[bufPos] is not colonByte:
-                            continue
-                    finally:
-                        bufPos += 1
-                        if bufPos == bufLen:
-                            refill()
-                    while buf[bufPos] in spaceBytes:
-                        bufPos += 1
-                        if bufPos == bufLen:
-                            refill()
-                    self.buf = buf
-                    self.bufPos = bufPos
-                    yield from generatorFactory(match.decode('ascii'))
+        while True:
+            delimiter = self.nextByte()
+            if delimiter is singleQuoteByte or delimiter is doubleQuoteByte:
+                candidates = names
+                candidatesEnds = namesEnds
+                candidatesLen = namesLen
+                charPos = 0
+                match = None
+                while match is None and candidatesLen > 0:
+                    candidatePos = candidatesLen
+                    while match is None and candidatePos > 0:
+                        candidatePos -= 1
+                        if charPos == candidatesEnds[candidatePos]:
+                            match = candidates[candidatePos]
+                        elif candidates[candidatePos][charPos] != self.peekByte(): # TODO cache result of this call
+                            candidatesLen -= 1
+                            if candidatesLen == 0:
+                                break
+                            else:
+                                if candidates is names: # lazy duplicate list then excise candidate
+                                    candidates = list(names)
+                                    candidatesEnds = list(namesEnds)
+                                del candidates[candidatePos]
+                                del candidatesEnds[candidatePos]
+                    charPos += 1
+                    self.nextByte()
+                else: # either match found or candidates eliminated
+                    if match is None:
+                        continue
+                try:
+                    if self.peekByte() is not delimiter:
+                        continue
+                finally:
+                    self.nextByte()
+                while self.peekByte() in spaceBytes:
+                    self.nextByte()
+                try:
+                    if self.peekByte() is not colonByte:
+                        continue
+                finally:
+                    self.nextByte()
+                while self.peekByte() in spaceBytes:
+                    self.nextByte()
+                yield from generatorFactory(match.decode('ascii'))
 
     def tokenizeValuesNamed(self, names):
         if type(names) is str:
