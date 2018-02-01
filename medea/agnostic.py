@@ -14,7 +14,6 @@ if sys.implementation.name == "micropython":
     import uos as os
     import uio as io
     import gc
-    from machine import freq
     from utime import ticks_ms, ticks_diff, sleep
     """
     import micropython
@@ -30,10 +29,14 @@ else:
     class gc:
         def collect(self):
             pass
-    def freq(val):
-        pass
     from time import sleep,time
     def ticks_ms():
         return int(time()*1000)
     def ticks_diff(a, b):
         return a - b
+
+if sys.platform == "esp8266":
+    from machine import freq
+else:
+    def freq(val):
+        pass
