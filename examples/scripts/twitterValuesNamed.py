@@ -1,8 +1,14 @@
 from medea import Tokenizer,createFileStreamGenerator
+from medea import createHttpsContentStreamGenerator, createTwitterTimelineUrl, processHttpHeaders
+from medea.auth import bearerHeader
 from examples.scripts import timeit
 
 def generateTweets():
-    tokenizer = Tokenizer(createFileStreamGenerator('examples/data/trumpTweet.json'))
+    #streamGenerator = createFileStreamGenerator('examples/data/trumpTweet.json')
+    twitterUrl = createTwitterTimelineUrl('realDonaldTrump')
+    streamGenerator = createHttpsContentStreamGenerator(twitterUrl, bearerHeader)
+
+    tokenizer = Tokenizer(streamGenerator)
 
     ids = []
     texts = []
@@ -10,9 +16,11 @@ def generateTweets():
     def generatorFactory(name):
         if name == "id":
             for tok, val in tokenizer.tokenizeValue():
+                print("Found id {}".format(val))
                 ids.append(val)
         elif name == "text":
             for tok, val in tokenizer.tokenizeValue():
+                print("Found text {}".format(val))
                 texts.append(val)
         elif name == "user":
             pass
