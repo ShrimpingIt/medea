@@ -4,9 +4,12 @@ from medea.auth import bearerHeader
 from examples.scripts import timeit
 
 def generateTweets():
-    #streamGenerator = createFileStreamGenerator('examples/data/trumpTweet.json')
+    streamGenerator = createFileStreamGenerator('examples/data/trumpTweet.json')
+
+    """ # to use live twitter instead of cached file
     twitterUrl = createTwitterTimelineUrl('realDonaldTrump')
     streamGenerator = createHttpsContentStreamGenerator(twitterUrl, bearerHeader)
+    """
 
     tokenizer = Tokenizer(streamGenerator)
 
