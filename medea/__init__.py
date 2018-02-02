@@ -1,4 +1,4 @@
-from medea.agnostic import io, gc
+from medea.agnostic import io, gc, socket, ssl
 
 OPEN="open"
 CLOSE="close"
@@ -50,8 +50,8 @@ def createFileStreamGenerator(path, buffer=None):
         nonlocal buffer
         if buffer is None:
             buffer = bytearray(defaultBufferSize)
-        consumed = False
         with open(path, "rb") as f:
+            consumed = False
             while True:
                 count = f.readinto(buffer)
                 pos = 0
@@ -61,9 +61,133 @@ def createFileStreamGenerator(path, buffer=None):
                         if consumed:
                             pos += 1
                         consumed = yield nextByte
+                        if consumed is None:
+                            consumed = True
                 else:
                     break
     return fileStreamGenerator
+
+def createHttpsStreamGenerator(url, headers=None, timeout=1.0, buffer=None):
+    def httpsStreamGenerator():
+        _, _, host, path = url.split('/', 3)
+        nonlocal buffer
+        if buffer is None:
+            buffer = bytearray(defaultBufferSize)
+        addr = socket.getaddrinfo(host, 443)[0][-1]
+        s = socket.socket()
+        s.connect(addr)
+        if hasattr(s, 'settimeout'):
+            s.settimeout(timeout)
+        try:
+            s = ssl.wrap_socket(s)
+            s.write('GET /{} HTTP/1.1\r\nHost: {}\r\nUser-Agent: Cockle\r\n'.format(path, host).encode('ascii'))
+            #s.write(b'GET /{} HTTP/1.1\r\nHost: {}\r\nUser-Agent: Cockle\r\n'.format(path, host))
+            if headers is not None:
+                s.write(headers)
+            s.write(b'\r\n')
+            consumed = False
+
+            while True:
+                #count = s.readinto(buffer)
+                count = s.read(len(buffer), buffer=buffer)
+                pos = 0
+                if count > 0:
+                    while pos < count:
+                        nextByte = buffer[pos]
+                        if consumed:
+                            pos += 1
+                        consumed = yield nextByte
+                        if consumed is None:
+                            consumed = True
+                else:
+                    break
+        finally:
+            s.close()
+    return httpsStreamGenerator
+
+def processHttpHeaders(stream):
+    contentLength = None
+
+    key = "content-length: "
+    keyLen = len(key)
+    keyPos = 0
+
+    # extract content-length header
+    while contentLength is None:
+        byte = next(stream)
+        while chr(byte) == key[keyPos]: # bytes continue to match
+            byte = next(stream)
+            keyPos += 1
+            if keyPos == keyLen:
+                char = chr(byte)
+                numberString = ""
+                while not char.isspace():
+                    numberString += char
+                    char = chr(next(stream))
+                contentLength = int(numberString)
+                break
+        else:
+            keyPos = 0
+
+    # consume bytes until double newline (end of header)
+    newlineCount = 0
+    while True:
+        if next(stream) == ord('\r') and next(stream) == ord('\n'):
+            newlineCount += 1
+        else:
+            newlineCount = 0
+        if newlineCount == 2:
+            break
+
+    return contentLength
+
+def createHttpsContentStreamGenerator(*a, **k):
+    rawStreamGenerator = createHttpsStreamGenerator(*a, **k)
+    def httpsContentStreamGenerator():
+        rawStream = rawStreamGenerator()
+        contentLength = processHttpHeaders(rawStream)
+        # TODO consider terminating rawStream as below based on known content length
+        # TODO however, might be a bug in the send/next behaviour if 'relaying' yield
+        """
+        def streamFactory():
+            for pos in range(contentLength):
+                yield next(rawStream)
+            rawStream.throw(StopIteration)
+        return streamFactory()
+        """
+        return rawStream
+    return httpsContentStreamGenerator
+
+twitterBaseUrl = "https://api.twitter.com/1.1/"
+
+def createTwitterHeaders():
+    from medea.auth import bearerHeader
+    return bearerHeader
+
+def createTwitterUrl(apiPath, getParams):
+    url = twitterBaseUrl + apiPath + "?"
+    url += "&".join(["{}={}".format(key, value) for key,value in getParams.items()])
+    gc.collect()
+    return url
+
+def createTwitterTimelineUrl(screen_name, count=1, **k):
+    params = dict(
+        screen_name=screen_name,
+        count=count,
+        include_rts = "false",
+    )
+    params.update(k)
+    return createTwitterUrl("statuses/user_timeline.json", params)
+
+def createTwitterSearchUrl(text, count=1, extraGetParams=None, *a, **k):
+    params = dict(
+        q=text,
+        count=count,
+        include_entities = "false",
+    )
+    params.update(k)
+    return createTwitterUrl("search/tweets.json", params)
+
 
 class Tokenizer():
     """This class wraps a source of bytes, like a file or a socket, and can tokenize it as a JSON value, (object, array or primitive)
