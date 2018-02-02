@@ -1,4 +1,5 @@
-from medea.agnostic import io, gc, socket, ssl
+from medea.agnostic import io, gc, socket, ssl, SocketTimeoutError
+import sys
 
 OPEN="open"
 CLOSE="close"
@@ -28,6 +29,25 @@ numberMetaBytes = b'.xeEb'
 spaceBytes = b' \n\t\r'
 digitBytes = b'0123456789'
 
+
+def connect(ssid,auth,timeout=16000):
+    from network import WLAN, STA_IF, AP_IF
+    global uplink
+    uplink = WLAN(STA_IF)
+    uplink.active(True)
+    uplink.connect(ssid, auth)
+    started= ticks_ms()
+    while True:
+        if uplink.isconnected():
+            return True
+        else:
+            if ticks_diff(ticks_ms(), started) < timeout:
+                sleep_ms(100)
+                continue
+            else:
+                return False
+
+
 class MedeaError(AssertionError):
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
@@ -45,7 +65,10 @@ defaultBufferSize = 512
 
 
 def createFileStreamGenerator(path, buffer=None):
-    "A generator you can send False to peek (read without incrementing), None or True increments by default"
+    """
+    Invoke with next(gen) or gen.send(True) to consume byte from stream (read AND increment)
+    Invoke with gen.send(False) to peek at byte (read WITHOUT incrementing)
+    """
     def fileStreamGenerator():
         nonlocal buffer
         if buffer is None:
@@ -80,16 +103,21 @@ def createHttpsStreamGenerator(url, headers=None, timeout=1.0, buffer=None):
             s.settimeout(timeout)
         try:
             s = ssl.wrap_socket(s)
-            s.write('GET /{} HTTP/1.1\r\nHost: {}\r\nUser-Agent: Cockle\r\n'.format(path, host).encode('ascii'))
-            #s.write(b'GET /{} HTTP/1.1\r\nHost: {}\r\nUser-Agent: Cockle\r\n'.format(path, host))
+            s.write(b'GET /')
+            s.write(path.encode('ascii'))
+            s.write(b' HTTP/1.1\r\nHost: ')
+            s.write(host.encode('ascii'))
+            s.write(b'\r\nUser-Agent: Cockle\r\n')
             if headers is not None:
                 s.write(headers)
             s.write(b'\r\n')
             consumed = False
 
             while True:
-                #count = s.readinto(buffer)
-                count = s.read(len(buffer), buffer=buffer)
+                if sys.implementation.name == "micropython":
+                    count = s.readinto(buffer)
+                else:
+                    count = s.read(len(buffer), buffer)
                 pos = 0
                 if count > 0:
                     while pos < count:
@@ -101,6 +129,16 @@ def createHttpsStreamGenerator(url, headers=None, timeout=1.0, buffer=None):
                             consumed = True
                 else:
                     break
+        except StopIteration:
+            pass # this is OK, expected
+        except GeneratorExit:
+            pass  # this is OK, expected
+        except SocketTimeoutError:
+            pass  # gave up awaiting for more from the socket
+        except BaseException as e:
+            print("Unexpected exception")
+            print(e)
+            raise
         finally:
             s.close()
     return httpsStreamGenerator
@@ -142,20 +180,39 @@ def processHttpHeaders(stream):
     return contentLength
 
 def createHttpsContentStreamGenerator(*a, **k):
-    rawStreamGenerator = createHttpsStreamGenerator(*a, **k)
+    httpsStreamGenerator = createHttpsStreamGenerator(*a, **k)
     def httpsContentStreamGenerator():
-        rawStream = rawStreamGenerator()
-        contentLength = processHttpHeaders(rawStream)
-        # TODO consider terminating rawStream as below based on known content length
-        # TODO however, might be a bug in the send/next behaviour if 'relaying' yield
-        """
-        def streamFactory():
-            for pos in range(contentLength):
-                yield next(rawStream)
-            rawStream.throw(StopIteration)
-        return streamFactory()
-        """
-        return rawStream
+        httpsStream = httpsStreamGenerator()
+        contentLength = processHttpHeaders(httpsStream)
+        def relayingStream():
+            it = iter(httpsStream)
+            try:
+                value = next(it)
+            except StopIteration:
+                pass
+            else:
+                contentPos = 0
+                while True:
+                    try:
+                        sent = yield value
+                        if sent is not False:
+                            contentPos += 1
+                            if contentPos >= contentLength:
+                                break
+                    except GeneratorExit:
+                        it.close()
+                        raise
+                    except BaseException:
+                        try:
+                            value = it.throw(*sys.exc_info())
+                        except StopIteration:
+                            break
+                    else:
+                        try:
+                            value = it.send(sent)
+                        except StopIteration:
+                            break
+        return relayingStream()
     return httpsContentStreamGenerator
 
 twitterBaseUrl = "https://api.twitter.com/1.1/"
