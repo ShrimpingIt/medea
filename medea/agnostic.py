@@ -13,6 +13,8 @@ assert hasattr(sys, "implementation"), "FATAL: Cannot run in Python 2"
 if sys.implementation.name == "micropython":
     import uos as os
     import uio as io
+    import usocket as socket
+    import ussl as ssl
     import gc
     from utime import ticks_ms, ticks_diff, sleep
     """
@@ -23,12 +25,12 @@ if sys.implementation.name == "micropython":
 else:
     import os
     import io
+    import socket
+    import ssl
+    import gc
     def native(fun):
         return fun
     viper = native
-    class gc:
-        def collect(self):
-            pass
     from time import sleep,time
     def ticks_ms():
         return int(time()*1000)
