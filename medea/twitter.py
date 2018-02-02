@@ -16,10 +16,14 @@ connectTimeout = 16000
 while not uplink.isconnected() and ticks_diff(ticks_ms(), connectTime) < connectTimeout:
     sleep_ms(100)
 
-def https_generate(url, headers=None, socketTimeout=1.0):
+def https_generate(url, headers=None, buf=None, socketTimeout=1.0):
     _, _, host, path = url.split('/', 3)
+
     import usocket
     import ussl
+    if buf is None:
+        buf = bytearray(128)
+    bufmv = memoryview(buf)
     addr = usocket.getaddrinfo(host, 443)[0][-1]
     s=usocket.socket()
     s.connect(addr)
@@ -30,8 +34,6 @@ def https_generate(url, headers=None, socketTimeout=1.0):
         if headers is not None:
             s.write(headers)
         s.write(b'\r\n')
-        buf = bytearray(128)
-        bufmv = memoryview(buf)
         while True:
             gc.collect()
             try:
@@ -44,7 +46,7 @@ def https_generate(url, headers=None, socketTimeout=1.0):
                     continue
             except OSError as ose:
                 print(ose)
-            break
+            break # handles case where read count is 0 and triggers close
     finally:
         s.close()
 
