@@ -9,11 +9,7 @@ twitterHeaders = (
     twitterBearerId,
     b'\r\n'
 )
-
-
-def createTwitterHeaders():
-    from medea.twitter import twitterHeaders
-    return twitterHeaders
+"""Headers authenticating request to the Twitter API"""
 
 
 def createTwitterUrl(apiPath, getParams):
