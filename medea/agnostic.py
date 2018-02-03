@@ -17,6 +17,7 @@ if sys.implementation.name == "micropython":
     import ussl as ssl
     import gc
     from utime import ticks_ms, ticks_diff, sleep
+    SocketTimeoutError = OSError
     """
     import micropython
     native = micropython.native
@@ -28,6 +29,7 @@ else:
     import socket
     import ssl
     import gc
+    SocketTimeoutError = socket.timeout
     def native(fun):
         return fun
     viper = native
