@@ -180,39 +180,39 @@ def processHttpHeaders(stream):
     return contentLength
 
 def createHttpsContentStreamGenerator(*a, **k):
+    """Creates a HTTPS stream, parses the HTTP header to get the content-length,
+    skips to the start of the HTTP content section, then returns a derived generator
+    which stops iteration after the proper count of content bytes"""
     httpsStreamGenerator = createHttpsStreamGenerator(*a, **k)
     def httpsContentStreamGenerator():
         httpsStream = httpsStreamGenerator()
         contentLength = processHttpHeaders(httpsStream)
-        def relayingStream():
-            it = iter(httpsStream)
-            try:
-                value = next(it)
-            except StopIteration:
-                pass
-            else:
-                contentPos = 0
-                while True:
+        try:
+            value = next(httpsStream)
+        except StopIteration:
+            pass
+        else:
+            contentPos = 0
+            while True:
+                try:
+                    sent = yield value
+                    if sent is not False:
+                        contentPos += 1
+                        if contentPos >= contentLength:
+                            break
+                except GeneratorExit:
+                    httpsStream.close()
+                    raise
+                except BaseException:
                     try:
-                        sent = yield value
-                        if sent is not False:
-                            contentPos += 1
-                            if contentPos >= contentLength:
-                                break
-                    except GeneratorExit:
-                        it.close()
-                        raise
-                    except BaseException:
-                        try:
-                            value = it.throw(*sys.exc_info())
-                        except StopIteration:
-                            break
-                    else:
-                        try:
-                            value = it.send(sent)
-                        except StopIteration:
-                            break
-        return relayingStream()
+                        value = httpsStream.throw(*sys.exc_info())
+                    except StopIteration:
+                        break
+                else:
+                    try:
+                        value = httpsStream.send(sent)
+                    except StopIteration:
+                        break
     return httpsContentStreamGenerator
 
 twitterBaseUrl = "https://api.twitter.com/1.1/"
@@ -236,7 +236,7 @@ def createTwitterTimelineUrl(screen_name, count=1, **k):
     params.update(k)
     return createTwitterUrl("statuses/user_timeline.json", params)
 
-def createTwitterSearchUrl(text, count=1, extraGetParams=None, *a, **k):
+def createTwitterSearchUrl(text, count=1, **k):
     params = dict(
         q=text,
         count=count,
@@ -276,9 +276,11 @@ class Tokenizer():
         self.stream = self.streamGenerator()
         self.stream.send(None)
 
+    # TODO replace calls to nextByte to stream send for efficiency
     def nextByte(self):
         return self.stream.send(True) # get byte, increment position by 1
 
+    # TODO replace calls to peekByte to stream send for efficiency
     def peekByte(self):
         return self.stream.send(False) # get byte, do not change position
 
