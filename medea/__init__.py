@@ -1,12 +1,12 @@
-OPEN="open"
-CLOSE="close"
-OBJECT="object"
-ARRAY="array"
-KEY="key"
-STRING="string"
-NUMBER="number"
-BOOLEAN="boolean"
-NULL="null"
+OPEN = "open"
+CLOSE = "close"
+OBJECT = "object"
+ARRAY = "array"
+KEY = "key"
+STRING = "string"
+NUMBER = "number"
+BOOLEAN = "boolean"
+NULL = "null"
 
 singleQuoteByte = ord("'")
 doubleQuoteByte = ord('"')
@@ -34,54 +34,58 @@ class MedeaError(AssertionError):
         super().__init__(*a, **k)
 
 
-def dumpTokens(streamGenerator):
-    tokenizer = Tokenizer(streamGenerator)
+def dumpTokens(byteGeneratorFactory):
+    tokenizer = Tokenizer(byteGeneratorFactory)
     tokenizer.dumpTokens()
 
 
-def visit(streamGenerator, callback):
-    tokenizer = Tokenizer(streamGenerator)
+def visit(byteGeneratorFactory, callback):
+    tokenizer = Tokenizer(byteGeneratorFactory)
     for tok, val in tokenizer.tokenize():
         callback(tok, val)
 
 
 class Tokenizer():
     """This class wraps a source of bytes, like a file or a socket, and can tokenize it as a JSON value, (object, array or primitive)
-        on each call to tokenize, the sourceFactory is called to initialise a new source, which must implement the 'readinto()' method.
-        Bytes are then read in buffers of up to bufSize characters, which are traversed for JSON symbols, triggering JSON value events
-        pairs composed of (token, value) pairs as follows.
+        on each call to tokenize, the byteGeneratorFactory is called to create a byteGenerator.
+        A conformant byte generator accepts...
+        * send(True) get a byte AND increment the stream position
+        * send(False) to get a byte WITHOUT incrementing (a peek).
+
+        Bytes are traversed for JSON symbols, triggering
+        JSON VALUE EVENTS; pairs composed of (token, value) as follows.
         (OPEN, OBJECT)          : a new object, to be followed by a sequence of zero or more pairs like (KEY, keybytes) <JSON VALUE EVENTS>
         (CLOSE, OBJECT)         : completion of all the key/value pairs of previously opened object
         (OPEN, ARRAY)           : a new array, to be followed by a sequence of zero or more <JSON VALUE EVENTS>
         (CLOSE, ARRAY)
-        (KEY, keyBytes)         : the next value which follows is a value embedded in an object
+        (KEY, keyBytes)         : the next value which follows is a value embedded in an object with the given KEY
         (NUMBER, numberBytes)
         (BOOLEAN, booleanBytes)
         (STRING, stringBytes)
         (NULL, nullBytes)
     """
 
-    def __init__(self, streamGenerator):
-        self.streamGenerator = streamGenerator
-        self.stream = None
+    def __init__(self, byteGeneratorFactory):
+        self.byteGeneratorFactory = byteGeneratorFactory
+        self.byteGenerator = None
 
     def unsetStream(self):
-        if self.stream is not None:
-            self.stream.throw(StopIteration)
-            self.stream = None
+        if self.byteGenerator is not None:
+            self.byteGenerator.throw(StopIteration)
+            self.byteGenerator = None
 
     def resetStream(self):
         self.unsetStream()
-        self.stream = self.streamGenerator()
-        self.stream.send(None)
+        self.byteGenerator = self.byteGeneratorFactory()
+        self.byteGenerator.send(None)
 
     # TODO inline calls, replacing with stream send instead
     def nextByte(self):
-        return self.stream.send(True) # get byte, increment position by 1
+        return self.byteGenerator.send(True)  # get byte, increment position by 1
 
     # TODO inline calls, replacing with stream send instead
     def peekByte(self):
-        return self.stream.send(False) # get byte, do not change position
+        return self.byteGenerator.send(False)  # get byte, do not change position
 
     def tokenize(self):
         self.resetStream()
@@ -110,19 +114,19 @@ class Tokenizer():
                         candidatePos -= 1
                         if charPos == candidatesEnds[candidatePos]:
                             match = candidates[candidatePos]
-                        elif candidates[candidatePos][charPos] != self.peekByte(): # TODO cache result of this call
+                        elif candidates[candidatePos][charPos] != self.peekByte():  # TODO cache result of this call
                             candidatesLen -= 1
                             if candidatesLen == 0:
                                 break
                             else:
-                                if candidates is names: # lazy duplicate list then excise candidate
+                                if candidates is names:  # lazy duplicate list then excise candidate
                                     candidates = list(names)
                                     candidatesEnds = list(namesEnds)
                                 del candidates[candidatePos]
                                 del candidatesEnds[candidatePos]
                     charPos += 1
                     self.nextByte()
-                else: # either match found or candidates eliminated
+                else:  # either match found or candidates eliminated
                     if match is None:
                         continue
                 try:
@@ -144,8 +148,10 @@ class Tokenizer():
     def tokenizeValuesNamed(self, names):
         if type(names) is str:
             names = [names]
+
         def generatorFactory(name):
             yield from self.tokenizeValue()
+
         return self.generateFromNamed(names, generatorFactory)
 
     def dumpTokens(self):
@@ -179,7 +185,7 @@ class Tokenizer():
     def tokenizeArray(self):
         if self.nextByte() != openArrayByte:
             raise MedeaError("Array should begin with [")
-        yield (OPEN,ARRAY)
+        yield (OPEN, ARRAY)
         while True:
             self.skipSpace()
             char = self.peekByte()
@@ -196,13 +202,13 @@ class Tokenizer():
         if self.nextByte() != openObjectByte:
             raise MedeaError("Objects begin {")
         else:
-            yield (OPEN,OBJECT)
+            yield (OPEN, OBJECT)
         while True:
             self.skipSpace()
             peek = self.peekByte()
             if peek is closeObjectByte:
                 self.nextByte()
-                return (yield (CLOSE,OBJECT))
+                return (yield (CLOSE, OBJECT))
             elif peek is singleQuoteByte or peek is doubleQuoteByte:
                 yield from self.tokenizeKey()
                 self.skipSpace()
@@ -224,16 +230,16 @@ class Tokenizer():
 
     def tokenizeString(self, token=STRING):
         delimiter = self.nextByte()
-        if not(delimiter is singleQuoteByte or delimiter is doubleQuoteByte):
+        if not (delimiter is singleQuoteByte or delimiter is doubleQuoteByte):
             raise MedeaError("{} starts with ' or \"".format(token))
         accumulator = bytearray()
         peek = self.peekByte()
         while peek != delimiter:
-            if peek is backslashByte: # backslash escaping means consume two chars
+            if peek is backslashByte:  # backslash escaping means consume two chars
                 accumulator.append(self.nextByte())
             accumulator.append(self.nextByte())
             peek = self.peekByte()
-        self.nextByte() # drop delimiter
+        self.nextByte()  # drop delimiter
         yield (token, bytes(accumulator).decode('ascii'))
 
     def tokenizeKey(self):
@@ -244,7 +250,7 @@ class Tokenizer():
         accumulator.append(self.nextByte())
         if accumulator[-1] is minusByte:
             accumulator.append(self.nextByte())
-        if not(accumulator[-1] in digitBytes):
+        if not (accumulator[-1] in digitBytes):
             raise MedeaError("Numbers begin [0-9] after optional - sign")
         while True:
             peek = self.peekByte()
