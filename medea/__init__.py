@@ -1,6 +1,3 @@
-from medea.https import createHttpsStreamGenerator, processHttpHeaders
-from medea.twitter import twitterBaseUrl
-
 OPEN="open"
 CLOSE="close"
 OBJECT="object"
@@ -29,21 +26,23 @@ numberMetaBytes = b'.xeEb'
 spaceBytes = b' \n\t\r'
 digitBytes = b'0123456789'
 
+defaultBufferSize = 512
+
 
 class MedeaError(AssertionError):
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
 
+
 def dumpTokens(streamGenerator):
     tokenizer = Tokenizer(streamGenerator)
     tokenizer.dumpTokens()
+
 
 def visit(streamGenerator, callback):
     tokenizer = Tokenizer(streamGenerator)
     for tok, val in tokenizer.tokenize():
         callback(tok, val)
-
-defaultBufferSize = 512
 
 
 class Tokenizer():
@@ -76,11 +75,11 @@ class Tokenizer():
         self.stream = self.streamGenerator()
         self.stream.send(None)
 
-    # TODO replace calls to nextByte to stream send for efficiency
+    # TODO inline calls, replacing with stream send instead
     def nextByte(self):
         return self.stream.send(True) # get byte, increment position by 1
 
-    # TODO replace calls to peekByte to stream send for efficiency
+    # TODO inline calls, replacing with stream send instead
     def peekByte(self):
         return self.stream.send(False) # get byte, do not change position
 
