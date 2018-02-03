@@ -1,10 +1,9 @@
 import sys
+from medea import defaultBufferSize
+from medea.agnostic import socket, ssl, SocketTimeoutError
 
-from medea import defaultBufferSize, socket, ssl, SocketTimeoutError
-
-
-def createHttpsStreamGenerator(url, headers=None, timeout=1.0, buffer=None):
-    def httpsStreamGenerator():
+def createHttpsByteGeneratorFactory(url, headers=None, timeout=1.0, buffer=None):
+    def byteGeneratorFactory():
         _, _, host, path = url.split('/', 3)
         nonlocal buffer
         if buffer is None:
@@ -55,7 +54,7 @@ def createHttpsStreamGenerator(url, headers=None, timeout=1.0, buffer=None):
             raise
         finally:
             s.close()
-    return httpsStreamGenerator
+    return byteGeneratorFactory
 
 
 def processHttpHeaders(stream):
@@ -95,16 +94,16 @@ def processHttpHeaders(stream):
     return contentLength
 
 
-def createHttpsContentStreamGenerator(*a, **k):
+def createHttpsContentByteGeneratorFactory(*a, **k):
     """Creates a HTTPS stream, parses the HTTP header to get the content-length,
     skips to the start of the HTTP content section, then returns a derived generator
     which stops iteration after the proper count of content bytes"""
-    httpsStreamGenerator = createHttpsStreamGenerator(*a, **k)
-    def httpsContentStreamGenerator():
-        httpsStream = httpsStreamGenerator()
-        contentLength = processHttpHeaders(httpsStream)
+    upstreamGeneratorFactory = createHttpsByteGeneratorFactory(*a, **k)
+    def byteGeneratorFactory():
+        byteGenerator = upstreamGeneratorFactory()
+        contentLength = processHttpHeaders(byteGenerator)
         try:
-            value = next(httpsStream)
+            value = next(byteGenerator)
         except StopIteration:
             pass
         else:
@@ -117,16 +116,16 @@ def createHttpsContentStreamGenerator(*a, **k):
                         if contentPos >= contentLength:
                             break
                 except GeneratorExit:
-                    httpsStream.close()
+                    byteGenerator.close()
                     raise
                 except BaseException:
                     try:
-                        value = httpsStream.throw(*sys.exc_info())
+                        value = byteGenerator.throw(*sys.exc_info())
                     except StopIteration:
                         break
                 else:
                     try:
-                        value = httpsStream.send(sent)
+                        value = byteGenerator.send(sent)
                     except StopIteration:
                         break
-    return httpsContentStreamGenerator
+    return byteGeneratorFactory
