@@ -1,9 +1,16 @@
-from medea import visit, createFileStreamGenerator
+from medea import visit, createTwitterTimelineUrl, createHttpsContentStreamGenerator
+from medea.auth import bearerHeader
+
 
 def visitor(tok, val):
     print(tok, val)
 
+
 def run():
-    visit(createFileStreamGenerator('examples/data/trumpTweet.json'), visitor)
+    twitterUrl = createTwitterTimelineUrl('realDonaldTrump', count=1)
+    streamGenerator = createHttpsContentStreamGenerator(twitterUrl, bearerHeader)
+
+    visit(streamGenerator, visitor)
+
 
 run()
