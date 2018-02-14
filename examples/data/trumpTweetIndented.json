@@ -1,10 +1,14 @@
 [
   {
-    "created_at": "Tue Aug 01 13:55:19 +0000 2017",
-    "id": 892383242535481344,
-    "id_str": "892383242535481344",
-    "text": "Only the Fake News Media and Trump enemies want me to stop using Social Media (110 million people). Only way for me to get the truth out!",
+    "created_at": "Tue Feb 13 10:52:47 +0000 2018",
+    "id": 963365328716812288,
+    "id_str": "963365328716812288",
+    "full_text": "Negotiations on DACA have begun. Republicans want to make a deal and Democrats say they want to make a deal. Wouldn\u2019t it be great if we could finally, after so many years, solve the DACA puzzle. This will be our last chance, there will never be another opportunity! March 5th.",
     "truncated": false,
+    "display_text_range": [
+      0,
+      276
+    ],
     "entities": {
       "hashtags": [],
       "symbols": [],
@@ -23,24 +27,37 @@
       "name": "Donald J. Trump",
       "screen_name": "realDonaldTrump",
       "location": "Washington, DC",
-      "description": "45th President of the United States of America",
-      "url": null,
+      "description": "45th President of the United States of America\ud83c\uddfa\ud83c\uddf8",
+      "url": "https:\/\/t.co\/OMxB0x7xC5",
       "entities": {
+        "url": {
+          "urls": [
+            {
+              "url": "https:\/\/t.co\/OMxB0x7xC5",
+              "expanded_url": "http:\/\/www.Instagram.com\/realDonaldTrump",
+              "display_url": "Instagram.com\/realDonaldTrump",
+              "indices": [
+                0,
+                23
+              ]
+            }
+          ]
+        },
         "description": {
           "urls": []
         }
       },
       "protected": false,
-      "followers_count": 35001203,
+      "followers_count": 47844022,
       "friends_count": 45,
-      "listed_count": 73728,
+      "listed_count": 84451,
       "created_at": "Wed Mar 18 13:46:38 +0000 2009",
-      "favourites_count": 13,
-      "utc_offset": -14400,
+      "favourites_count": 24,
+      "utc_offset": -18000,
       "time_zone": "Eastern Time (US & Canada)",
       "geo_enabled": true,
       "verified": true,
-      "statuses_count": 35426,
+      "statuses_count": 36934,
       "lang": "en",
       "contributors_enabled": false,
       "is_translator": false,
@@ -51,7 +68,7 @@
       "profile_background_tile": true,
       "profile_image_url": "http:\/\/pbs.twimg.com\/profile_images\/874276197357596672\/kUuht00m_normal.jpg",
       "profile_image_url_https": "https:\/\/pbs.twimg.com\/profile_images\/874276197357596672\/kUuht00m_normal.jpg",
-      "profile_banner_url": "https:\/\/pbs.twimg.com\/profile_banners\/25073877\/1501552819",
+      "profile_banner_url": "https:\/\/pbs.twimg.com\/profile_banners\/25073877\/1517463920",
       "profile_link_color": "1B95E0",
       "profile_sidebar_border_color": "BDDCAD",
       "profile_sidebar_fill_color": "C5CEC0",
@@ -70,8 +87,8 @@
     "place": null,
     "contributors": null,
     "is_quote_status": false,
-    "retweet_count": 20266,
-    "favorite_count": 83687,
+    "retweet_count": 18952,
+    "favorite_count": 83143,
     "favorited": false,
     "retweeted": false,
     "lang": "en"
