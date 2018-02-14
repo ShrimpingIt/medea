@@ -10,7 +10,6 @@ stream = streamGenerator()
 contentLength = processHttpHeaders(stream)
 
 # process content bytes
-content = bytearray()
 for contentPos in range(contentLength):
     sys.stdout.write(chr(next(stream)))
 
