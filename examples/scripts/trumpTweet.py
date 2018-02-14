@@ -1,15 +1,15 @@
-from medea import visit
-from medea.https import createHttpsContentByteGeneratorFactory
+from medea.util import visit
+from medea.https import createContentByteGeneratorFactory
 from medea.twitter import twitterHeaders, createTwitterTimelineUrl
 
 
-def visitor(tok, val):
-    print(tok, val)
+def visitor(*a):
+    print(a)
 
 
 def run():
     twitterUrl = createTwitterTimelineUrl('realDonaldTrump', count=1)
-    byteGeneratorFactory = createHttpsContentByteGeneratorFactory(twitterUrl, twitterHeaders)
+    byteGeneratorFactory = createContentByteGeneratorFactory(twitterUrl, twitterHeaders)
     visit(byteGeneratorFactory, visitor)
 
 

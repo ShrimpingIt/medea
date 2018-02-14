@@ -1,9 +1,9 @@
-from medea.https import createHttpsByteGeneratorFactory, processHttpHeaders
+from medea.https import createByteGeneratorFactory, processHttpHeaders
 from medea.twitter import twitterHeaders, createTwitterTimelineUrl
 import sys
 
 twitterUrl = createTwitterTimelineUrl('realDonaldTrump')
-byteGeneratorFactory = createHttpsByteGeneratorFactory(twitterUrl, twitterHeaders)
+byteGeneratorFactory = createByteGeneratorFactory(twitterUrl, twitterHeaders)
 byteGenerator = byteGeneratorFactory()
 
 # process header bytes

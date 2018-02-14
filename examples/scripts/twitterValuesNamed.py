@@ -1,6 +1,5 @@
 from medea import Tokenizer
-#from medea.file import createFileByteGeneratorFactory
-from medea.https import createHttpsContentByteGeneratorFactory
+from medea.https import createContentByteGeneratorFactory
 from medea.twitter import twitterHeaders, createTwitterTimelineUrl
 from examples.scripts import timeit
 
@@ -10,7 +9,7 @@ def generateTweets():
     """
 
     twitterUrl = createTwitterTimelineUrl('realDonaldTrump', count=1, tweet_mode="extended")
-    byteGeneratorFactory = createHttpsContentByteGeneratorFactory(twitterUrl, twitterHeaders)
+    byteGeneratorFactory = createContentByteGeneratorFactory(twitterUrl, twitterHeaders)
 
     tokenizer = Tokenizer(byteGeneratorFactory)
 

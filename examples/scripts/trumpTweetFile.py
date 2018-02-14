@@ -1,5 +1,5 @@
-from medea import visit
-from medea.https import createHttpsContentByteGeneratorFactory
+from medea.util import visit
+from medea.https import createContentByteGeneratorFactory
 from medea.file import createFileByteGeneratorFactory
 from medea.twitter import twitterHeaders, createTwitterTimelineUrl
 
@@ -10,7 +10,7 @@ def visitor(tok, val):
 
 def writefile():
     twitterUrl = createTwitterTimelineUrl('realDonaldTrump', count=1)
-    streamGenerator = createHttpsContentByteGeneratorFactory(twitterUrl, twitterHeaders)
+    streamGenerator = createContentByteGeneratorFactory(twitterUrl, twitterHeaders)
     stream = streamGenerator()
     with open(filename, "wb") as f:
         try:

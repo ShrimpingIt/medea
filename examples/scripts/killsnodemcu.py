@@ -5,7 +5,7 @@
 
 import sys
 import gc
-from medea.https import createHttpsByteGeneratorFactory
+from medea.https import createByteGeneratorFactory
 gc.collect()
 if sys.implementation.name=="micropython":
     from medea.wifi import connect
@@ -13,6 +13,6 @@ if sys.implementation.name=="micropython":
 
 #factory = createHttpsByteGeneratorFactory('https://www.google.com')
 #factory = createHttpsByteGeneratorFactory('https://https://httpbin.org/ip')
-factory = createHttpsByteGeneratorFactory('https://api.twitter.com/1.1/')
+factory = createByteGeneratorFactory('https://api.twitter.com/1.1/')
 generator=factory()
 byte = next(generator)

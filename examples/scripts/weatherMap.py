@@ -1,4 +1,4 @@
-from medea import visit
+from medea.util import visit
 from medea.file import createFileByteGeneratorFactory
 
 
