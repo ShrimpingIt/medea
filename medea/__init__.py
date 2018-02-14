@@ -1,49 +1,34 @@
-OPEN = "open"
-CLOSE = "close"
-OBJECT = "object"
-ARRAY = "array"
-KEY = "key"
-STRING = "string"
-NUMBER = "number"
-BOOLEAN = "boolean"
-NULL = "null"
+from medea.agnostic import *
 
-singleQuoteByte = ord("'")
-doubleQuoteByte = ord('"')
-backslashByte = ord("\\")
-openObjectByte = ord('{')
-closeObjectByte = ord('}')
-openArrayByte = ord('[')
-closeArrayByte = ord(']')
-colonByte = ord(':')
-commaByte = ord(',')
-firstTrueByte = ord('t')
-firstFalseByte = ord('f')
-firstNullByte = ord('n')
-minusByte = ord('-')
+OPEN = b"open"
+CLOSE = b"close"
+OBJ = b"object"
+ARR = b"array"
+KEY = b"key"
+STR = b"string"
+NUM = b"number"
+BOOL = b"boolean"
+NUL = b"null"
+
+singleQuoteByte = const(39) # ord("'")
+doubleQuoteByte = const(34) # ord('"')
+backslashByte = const(92) # ord("\\")
+openObjectByte = const(123) # ord('{')
+closeObjectByte = const(125) # ord('}')
+openArrayByte = const(91) # ord('[')
+closeArrayByte = const(93) #ord(']')
+colonByte = const(58) #ord(':')
+commaByte = const(44) #ord(',')
+firstTrueByte = const(116) #ord('t')
+firstFalseByte = const(102) # ord('f')
+firstNullByte = const(110) #ord('n')
+minusByte = const(45) #ord('-')
 
 numberMetaBytes = b'.xeEb'
 spaceBytes = b' \n\t\r'
 digitBytes = b'0123456789'
 
 defaultBufferSize = 512
-
-
-class MedeaError(AssertionError):
-    def __init__(self, *a, **k):
-        super().__init__(*a, **k)
-
-
-def dumpTokens(byteGeneratorFactory):
-    tokenizer = Tokenizer(byteGeneratorFactory)
-    tokenizer.dumpTokens()
-
-
-def visit(byteGeneratorFactory, callback):
-    tokenizer = Tokenizer(byteGeneratorFactory)
-    for tok, val in tokenizer.tokenize():
-        callback(tok, val)
-
 
 class Tokenizer():
     """This class wraps a source of bytes, like a file or a socket, and can tokenize it as a JSON value, (object, array or primitive)
@@ -165,33 +150,33 @@ class Tokenizer():
             elif byte is openObjectByte:
                 return (yield from self.tokenizeObject(gen))
             elif byte is singleQuoteByte or byte is doubleQuoteByte:
-                return (yield from self.tokenizeString(STRING, gen))
+                return (yield from self.tokenizeString(STR, gen))
             elif byte in digitBytes or byte is minusByte:
                 return (yield from self.tokenizeNumber(gen))
             elif byte is firstTrueByte:
                 self.skipLiteral(b"true")
-                return (yield (BOOLEAN, True))
+                return (yield (BOOL, True))
             elif byte is firstFalseByte:
                 self.skipLiteral(b"false")
-                return (yield (BOOLEAN, False))
+                return (yield (BOOL, False))
             elif byte is firstNullByte:
                 self.skipLiteral(b"null")
-                return (yield (NULL, None))
+                return (yield (NUL, None))
             else:
-                raise MedeaError("Unexpected character {}".format(byte))
+                raise AssertionError("Unexpected character {}".format(byte))
 
     def tokenizeArray(self, gen=None):
         if gen is None:
             gen = self.byteGenerator
         if gen.send(True) != openArrayByte:
-            raise MedeaError("Array should begin with [")
-        yield (OPEN, ARRAY)
+            raise AssertionError("Array should begin with [")
+        yield (OPEN, ARR)
         while True:
             self.skipSpace()
             char = gen.send(False)
             if char is closeArrayByte:
                 gen.send(True)
-                return (yield (CLOSE, ARRAY))
+                return (yield (CLOSE, ARR))
             else:
                 yield from self.tokenizeValue(gen)
                 if gen.send(False) is commaByte:
@@ -202,24 +187,24 @@ class Tokenizer():
         if gen is None:
             gen = self.byteGenerator
         if gen.send(True) != openObjectByte:
-            raise MedeaError("Objects begin {")
+            raise AssertionError("Objects begin {")
         else:
-            yield (OPEN, OBJECT)
+            yield (OPEN, OBJ)
         while True:
             self.skipSpace()
             peek = gen.send(False)
             if peek is closeObjectByte:
                 gen.send(True)
-                return (yield (CLOSE, OBJECT))
+                return (yield (CLOSE, OBJ))
             elif peek is singleQuoteByte or peek is doubleQuoteByte:
                 yield from self.tokenizeKey(gen)
                 self.skipSpace()
                 if gen.send(True) is not colonByte:
-                    raise MedeaError("Expecting : after key")
+                    raise AssertionError("Expecting : after key")
                 self.skipSpace()
                 yield from self.tokenizeValue(gen)
             else:
-                raise MedeaError("Keys begin \" or '")
+                raise AssertionError("Keys begin \" or '")
 
             self.skipSpace()
             peek = gen.send(False)
@@ -228,14 +213,14 @@ class Tokenizer():
             elif peek is commaByte:
                 gen.send(True)
             else:
-                raise MedeaError("Pairs precede , or }")
+                raise AssertionError("Pairs precede , or }")
 
     def tokenizeString(self, token, gen=None):
         if gen is None:
             gen = self.byteGenerator
         delimiter = gen.send(True)
         if not (delimiter is singleQuoteByte or delimiter is doubleQuoteByte):
-            raise MedeaError("{} starts with ' or \"".format(token))
+            raise AssertionError("{} starts with ' or \"".format(token))
         accumulator = bytearray()
         peek = gen.send(False)
         while peek != delimiter:
@@ -257,17 +242,17 @@ class Tokenizer():
         if accumulator[-1] is minusByte:
             accumulator.append(gen.send(True))
         if not (accumulator[-1] in digitBytes):
-            raise MedeaError("Numbers begin [0-9] after optional - sign")
+            raise AssertionError("Numbers begin [0-9] after optional - sign")
         while True:
             peek = gen.send(False)
             if peek in digitBytes or peek in numberMetaBytes:
                 accumulator.append(gen.send(True))
             else:
                 if len(accumulator):
-                    yield (NUMBER, bytes(accumulator).decode('ascii'))
+                    yield (NUM, bytes(accumulator).decode('ascii'))
                     break
                 else:
-                    raise MedeaError("Invalid number")
+                    raise AssertionError("Invalid number")
 
     def skipSpace(self, gen=None):  # TODO CH make consistent with skipLiteral - eliminate empty yield syntax
         if gen is None:
@@ -280,4 +265,4 @@ class Tokenizer():
             gen = self.byteGenerator
         for literalByte in bytesLike:
             if gen.send(True) != literalByte:
-                raise MedeaError("Expecting keyword {}" + bytesLike)
+                raise AssertionError("Expecting keyword {}" + bytesLike)
