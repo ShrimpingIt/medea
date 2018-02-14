@@ -1,8 +1,9 @@
 import sys
+import gc
 from medea import defaultBufferSize
 from medea.agnostic import socket, ssl, SocketTimeoutError
 
-def createHttpsByteGeneratorFactory(url, headers=None, timeout=1.0, buffer=None, bufferSize=defaultBufferSize):
+def createByteGeneratorFactory(url, headers=None, timeout=1.0, buffer=None, bufferSize=defaultBufferSize):
     def byteGeneratorFactory():
         _, _, host, path = url.split('/', 3)
         nonlocal buffer, bufferSize
@@ -12,7 +13,7 @@ def createHttpsByteGeneratorFactory(url, headers=None, timeout=1.0, buffer=None,
         try:
             addr = socket.getaddrinfo(host, 443)[0][-1]
         except IndexError:
-            raise Exception("Not connected to Wifi")
+            raise Exception("No Wifi")
         s = socket.socket()
         s.connect(addr)
         if hasattr(s, 'settimeout'):
@@ -28,10 +29,9 @@ def createHttpsByteGeneratorFactory(url, headers=None, timeout=1.0, buffer=None,
                 for header in headers:
                     s.write(header)
             s.write(b'\r\n')
-            consumed = False
+            msg = False
 
             remaining = None
-
             while True:
                 if sys.implementation.name == "micropython":
                     if remaining is None or bufferSize < remaining:
@@ -47,18 +47,19 @@ def createHttpsByteGeneratorFactory(url, headers=None, timeout=1.0, buffer=None,
                 if count > 0:
                     while pos < count:
                         nextByte = buffer[pos]
-                        if consumed:
+                        if msg:
                             pos += 1
                             if remaining is not None:
                                 remaining -= 1
-                        consumed = yield nextByte
-                        if consumed is None:
-                            consumed = True
-                        elif consumed is False:
-                            pass
-                        elif type(consumed) is int: # allow signalling content length
-                            remaining = consumed
-                            consumed = False
+                        msg = yield nextByte
+                        if msg is None:
+                            msg = True
+                        else:
+                            if msg is True or msg is False:
+                                pass
+                            elif type(msg) is int: # allow signalling content length
+                                remaining = msg
+                                msg = False # byte will be replayed
                 else:
                     break
         except StopIteration:
@@ -81,14 +82,14 @@ def createHttpsByteGeneratorFactory(url, headers=None, timeout=1.0, buffer=None,
 def processHttpHeaders(stream):
     contentLength = None
 
-    key = "content-length: "
+    key = b"content-length: "
     keyLen = len(key)
     keyPos = 0
 
     # extract content-length header
     while contentLength is None:
         byte = next(stream)
-        while chr(byte) == key[keyPos]: # bytes continue to match
+        while byte == key[keyPos]: # bytes continue to match
             byte = next(stream)
             keyPos += 1
             if keyPos == keyLen:
@@ -115,11 +116,11 @@ def processHttpHeaders(stream):
     return contentLength
 
 
-def createHttpsContentByteGeneratorFactory(*a, **k):
+def createContentByteGeneratorFactory(*a, **k):
     """Creates a HTTPS stream, parses the HTTP header to get the content-length,
     skips to the start of the HTTP content section, then returns a derived generator
     which stops iteration after the proper count of content bytes"""
-    upstreamGeneratorFactory = createHttpsByteGeneratorFactory(*a, **k)
+    upstreamGeneratorFactory = createByteGeneratorFactory(*a, **k)
     def byteGeneratorFactory():
         """Yield+send delegation Based on answer shared at https://stackoverflow.com/questions/48584098/yield-based-equivalent-to-python3-yield-from-delegation-without-losing-send"""
         byteGenerator = upstreamGeneratorFactory()
