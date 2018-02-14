@@ -1,5 +1,7 @@
+from network import WLAN, STA_IF, AP_IF
+from utime import sleep_ms, ticks_ms, ticks_diff
+
 def connect(ssid, auth, timeout=16000):
-    from network import WLAN, STA_IF, AP_IF
     global uplink
     uplink = WLAN(STA_IF)
     uplink.active(True)
