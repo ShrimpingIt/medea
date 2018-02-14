@@ -23,6 +23,6 @@ def readfile():
     streamGenerator = createFileByteGeneratorFactory(filename)
     visit(streamGenerator, visitor)
 
-
-#writefile()
-readfile()
+if __name__ == "__main__":
+    writefile()
+    readfile()
