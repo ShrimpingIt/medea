@@ -1,12 +1,11 @@
-from medea.https import createHttpsByteGeneratorFactory, processHttpHeaders
+from medea.https import createHttpsByteGeneratorFactory
 from medea.twitter import twitterHeaders, createTwitterTimelineUrl
 import sys
 
-twitterUrl = createTwitterTimelineUrl('realDonaldTrump')
+twitterUrl = createTwitterTimelineUrl('realDonaldTrump', tweet_mode="extended")
 byteGeneratorFactory = createHttpsByteGeneratorFactory(twitterUrl, twitterHeaders)
 byteGenerator = byteGeneratorFactory()
 contentPos = 0
 while True:
     sys.stdout.write(chr(next(byteGenerator)))
-    print(contentPos)
     contentPos += 1
