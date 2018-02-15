@@ -8,4 +8,5 @@ def visitor(tok, val):
 def run():
     visit(createFileByteGeneratorFactory('examples/data/weathermap.json'), visitor)
 
-run()
+if __name__ == "__main__":
+    run()
