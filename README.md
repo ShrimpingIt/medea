@@ -10,6 +10,21 @@ If JSON is parsed in the conventional Micropython way ( see [ujson.loads()](http
 
 On an internet-of-things device like the ESP8266 this means complex online API structures such as the OpenWeatherMap API or Twitter are impossible to decode because the all the descendants cannot be stored in memory. For some verbose JSON services, even constructing a single string to pass into the ```json.loads()``` call would exceed the memory, before creating any children at all.
 
+By contrast Medea processes the JSON source as a stream, throwing away all bytes and keeping just enough information to be able to detect and notify each complete 'token' found in the stream.  It can consume data from file, HTTPS, HTTP or socket streams using a buffer which can be as small as a single byte!
+
+## Tokenizing
+
+Bytes are traversed for JSON symbols, triggering \<JSON VALUE EVENTS>; pairs composed of (token, value) as follows.
+  * (OPEN, OBJ)            : a new object, to be followed by a sequence of zero or more pairs like (KEY, keybytes) \<JSON VALUE EVENTS>
+  * (CLOSE, OBJ)           : finishes the key/value pairs of the last-opened object
+  * (OPEN, ARR)            : a new array, to be followed by a sequence of zero or more \<JSON VALUE EVENTS>
+  * (CLOSE, ARR)           : finishes the last array which was opened
+  * (KEY, keyBytes)        : the next value which follows is a value embedded in an object with the given KEY
+  * (NUM, numberBytes)     : a whole or floating point number
+  * (BOOL, booleanBytes)   : a `true` or `false` value
+  * (STR, stringBytes)     : a text value
+  * (NUL, nullBytes)       : corresponding with JSON `null` value
+
 ## Examples
 
 Two sample JSON API results from Twitter and from OpenWeatherMap have been included in the repository and can be successfully processed into tokens by the library even on an ESP8266 as demonstrated by, for example...
