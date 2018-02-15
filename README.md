@@ -7,14 +7,18 @@ Medea can tokenize an arbitrary length of JSON with only a single byte of buffer
 Two sample JSON API results from Twitter and from OpenWeatherMap have been included in the repository and can be successfully processed into tokens by the library even on an ESP8266 as demonstrated by, for example...
 
 ```
-import examples.scripts.trumpTweet
+import examples.scripts.twitterTimelineTokenizeCached
 ```
 
 ...or...
 
 ```
-import examples.scripts.weatherMap
+import examples.scripts.forecastTokenizeCached
 ```
+
+To process Twitter API or OpenWeatherMap JSON documents, you will have to register your application and get a bearerId or appId, and fill in the details in medea/auth.py, for the URLs to be properly authenticated.
+
+Although Medea runs on CPython and ESP32 as regular python modules loaded from the filesystem, on ESP8266 it needs to be distributed as [frozen modules](http://docs.micropython.org/en/v1.9.3/unix/reference/constrained.html). Otherwise there is not enough memory for the SSL socket handshake to complete. By default the ESP8266 TLS buffer is only large enough to handle a Twitter timeline API call requesting a single Tweet (count=1). However, the buffer can [be increased](https://github.com/micropython/micropython/commit/a47b8711316a4901bc81e1c46ce50de00207c47f) on ESP8266 to be able to handle larger payloads, for example increasing to 8192 bytes enabled the handling of at least 10 tweets in testing.
 
 
 ## Motivation
