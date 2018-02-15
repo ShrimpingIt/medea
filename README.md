@@ -26,24 +26,18 @@ import examples.scripts.forecastTokenizeCached
 
 The examples which process live Twitter or OpenWeatherMap JSON documents from their API servers over HTTPS need a registered account with Twitter or OpenWeatherMap. Fill in the bearerId/appId details in medea/auth.py and this will authenticate the example scripts. It is assumed you will have configured an internet connection before running the applications although examples/scripts/twitterTimelinePollFields.py offers an example of negotiating wifi before accessing an online JSON resource. 
 
-See put.sh for a routine which uploads all the scripts and data to an ESP32 using Adafruit's ampy tool.
+## ESP32 Upload
+
+See put.sh for a Linux and probably Mac-compatible console script which uploads all the scripts and data to an ESP32 using Adafruit's ampy tool.
 
 
-## Limitations
+## ESP8266 Pre-configured Image
 
-The ESP8266 interpreter cannot handle recursion beyond 19 stack levels, so very deeply nested JSON data still cannot be handled without further optimising this library.
+A pre-configured image suitable which works around the ESP8266 limitations noted below is available at http://shrimping.it/project/medea/ based on Micropython 1.9.3 with medea onboard as frozen modules and an 8192byte TLS buffer to allow larger HTTPS payloads (e.g. > 10 tweets). 
 
-Although Medea runs on CPython and ESP32 as regular python modules loaded from the filesystem, HTTPS JSON processing on ESP8266 requires that medea is installed as [frozen modules](http://docs.micropython.org/en/v1.9.3/unix/reference/constrained.html). Otherwise there is not enough memory for the SSL socket handshake to complete. 
+Use the standard `esptool` [instructions](https://docs.micropython.org/en/latest/esp8266/esp8266/tutorial/intro.html) to upload the image.
 
-By default the ESP8266 TLS buffer is only large enough to handle a Twitter timeline API call requesting a single Tweet (count=1). However, the buffer can [be increased](https://github.com/micropython/micropython/commit/a47b8711316a4901bc81e1c46ce50de00207c47f) on ESP8266 to be able to handle larger payloads, for example increasing to 8192 bytes enabled the handling of at least 10 tweets in testing.
-
-# ESP8266 Image
-
-A pre-configured image suitable for ESP8266 is available at http://shrimping.it/project/medea/ based on Micropython 1.9.3 with medea onboard as frozen modules and an 8192byte TLS buffer to allow larger HTTPS payloads (e.g. > 10 tweets). 
-
-Use the standard `esptool` [instructions](https://docs.micropython.org/en/latest/esp8266/esp8266/tutorial/intro.html)to upload the image.
-
-Remember to add your own authentication values. This can be done interactively as follows (note these are bytestrings, prefixed with b, and the values below will not work, they have to be YOUR credentials). 
+Remember to add your own authentication values. You can run a test case interactively as follows (note credentials are bytestrings, prefixed with b, and the values below will not work, they have to be YOUR credentials). 
 
 ```python
 import medea.auth
@@ -53,6 +47,17 @@ medea.auth.twitterBearerId=b"abfed676767762762"
 from examples.scripts.twitterTimelinePollFields import loop
 loop()
 ```
+
+## ESP8266 Limitations
+
+Although Medea runs on CPython and ESP32 as regular python modules loaded from the filesystem, HTTPS JSON processing on ESP8266 requires that medea is installed as [frozen modules](http://docs.micropython.org/en/v1.9.3/unix/reference/constrained.html). Otherwise there is not enough memory for the SSL socket handshake to complete. 
+
+By default the ESP8266 TLS buffer is only large enough to handle a Twitter timeline API call requesting a single Tweet (count=1). However, the buffer can [be increased](https://github.com/micropython/micropython/commit/a47b8711316a4901bc81e1c46ce50de00207c47f) on ESP8266 to be able to handle larger payloads, for example increasing to 8192 bytes enabled the handling of at least 10 tweets in testing.
+
+The ESP8266 interpreter cannot handle recursion beyond 19 stack levels, so very deeply nested JSON data still cannot be handled without further optimising this library.
+
+See above for instructions to use a pre-configured ESP8266 image which works around these limitations.
+
 
 ## Why the name?
 
