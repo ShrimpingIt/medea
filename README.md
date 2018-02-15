@@ -37,7 +37,22 @@ Although Medea runs on CPython and ESP32 as regular python modules loaded from t
 
 By default the ESP8266 TLS buffer is only large enough to handle a Twitter timeline API call requesting a single Tweet (count=1). However, the buffer can [be increased](https://github.com/micropython/micropython/commit/a47b8711316a4901bc81e1c46ce50de00207c47f) on ESP8266 to be able to handle larger payloads, for example increasing to 8192 bytes enabled the handling of at least 10 tweets in testing.
 
-A pre-configured image suitable for ESP8266 is available at http://shrimping.it/project/medea/ based on Micropython 1.9.3 with medea onboard as frozen modules and an 8192byte TLS buffer to allow larger HTTPS payloads (e.g. > 10 tweets).
+# ESP8266 Image
+
+A pre-configured image suitable for ESP8266 is available at http://shrimping.it/project/medea/ based on Micropython 1.9.3 with medea onboard as frozen modules and an 8192byte TLS buffer to allow larger HTTPS payloads (e.g. > 10 tweets). 
+
+Use the standard `esptool` [instructions](https://docs.micropython.org/en/latest/esp8266/esp8266/tutorial/intro.html)to upload the image.
+
+Remember to add your own authentication values. This can be done interactively as follows (note these are bytestrings, prefixed with b, and the values below will not work, they have to be YOUR credentials). 
+
+```python
+import medea.auth
+medea.auth.wifiName=b"MyNetwork"
+medea.auth.wifiPass=b"MyPassword"
+medea.auth.twitterBearerId=b"abfed676767762762"
+from examples.scripts.twitterTimelinePollFields import loop
+loop()
+```
 
 ## Why the name?
 
