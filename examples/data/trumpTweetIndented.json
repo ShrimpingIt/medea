@@ -1,14 +1,10 @@
 [
   {
-    "created_at": "Tue Feb 13 10:52:47 +0000 2018",
-    "id": 963365328716812288,
-    "id_str": "963365328716812288",
-    "full_text": "Negotiations on DACA have begun. Republicans want to make a deal and Democrats say they want to make a deal. Wouldn\u2019t it be great if we could finally, after so many years, solve the DACA puzzle. This will be our last chance, there will never be another opportunity! March 5th.",
+    "created_at": "Wed Feb 14 20:55:01 +0000 2018",
+    "id": 963879275324760070,
+    "id_str": "963879275324760070",
+    "text": "Just spoke to Governor Rick Scott. We are working closely with law enforcement on the terrible Florida school shooting.",
     "truncated": false,
-    "display_text_range": [
-      0,
-      276
-    ],
     "entities": {
       "hashtags": [],
       "symbols": [],
@@ -48,16 +44,16 @@
         }
       },
       "protected": false,
-      "followers_count": 47844022,
+      "followers_count": 47856734,
       "friends_count": 45,
-      "listed_count": 84451,
+      "listed_count": 83922,
       "created_at": "Wed Mar 18 13:46:38 +0000 2009",
       "favourites_count": 24,
       "utc_offset": -18000,
       "time_zone": "Eastern Time (US & Canada)",
       "geo_enabled": true,
       "verified": true,
-      "statuses_count": 36934,
+      "statuses_count": 36938,
       "lang": "en",
       "contributors_enabled": false,
       "is_translator": false,
@@ -87,8 +83,8 @@
     "place": null,
     "contributors": null,
     "is_quote_status": false,
-    "retweet_count": 18952,
-    "favorite_count": 83143,
+    "retweet_count": 10309,
+    "favorite_count": 48338,
     "favorited": false,
     "retweeted": false,
     "lang": "en"
