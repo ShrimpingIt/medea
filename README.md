@@ -24,11 +24,13 @@ import examples.scripts.twitterTimelineTokenizeCached
 import examples.scripts.forecastTokenizeCached
 ```
 
-The examples which process live Twitter or OpenWeatherMap JSON documents from their API servers over HTTPS need a registered account with Twitter or OpenWeatherMap. Fill in the bearerId/appId details in medea/auth.py and this will authenticate the example scripts. It is assumed you will have configured an internet connection before running the applications although examples/scripts/twitterTimelinePollFields.py offers an example of negotiating wifi before accessing an online JSON resource. 
+The examples which process live Twitter or OpenWeatherMap JSON documents from their API servers over HTTPS need Wifi and a registered account with Twitter or OpenWeatherMap. On ESP8266 a special build with Frozen Modules an increased size TLS buffer is needed (see pre-built image available below). 
+
+Most example scripts assume you have configured an internet connection before running them. However, twitterTimelinePollFields.py shows how to negotiate wifi before accessing an online JSON resource. 
 
 ## ESP32 Upload
 
-See put.sh for a Linux and probably Mac-compatible console script which uploads all the scripts and data to an ESP32 using Adafruit's ampy tool.
+See put.sh for a Linux (and probably Mac)-compatible console script which uploads all the scripts and data to an ESP32 using Adafruit's ampy tool.
 
 
 ## ESP8266 Pre-configured Image
@@ -52,11 +54,11 @@ loop()
 
 Although Medea runs on CPython and ESP32 as regular python modules loaded from the filesystem, HTTPS JSON processing on ESP8266 requires that medea is installed as [frozen modules](http://docs.micropython.org/en/v1.9.3/unix/reference/constrained.html). Otherwise there is not enough memory for the SSL socket handshake to complete. 
 
-By default the ESP8266 TLS buffer is only large enough to handle a Twitter timeline API call requesting a single Tweet (count=1). However, the buffer can [be increased](https://github.com/micropython/micropython/commit/a47b8711316a4901bc81e1c46ce50de00207c47f) on ESP8266 to be able to handle larger payloads, for example increasing to 8192 bytes enabled the handling of at least 10 tweets in testing.
-
-The ESP8266 interpreter cannot handle recursion beyond 19 stack levels, so very deeply nested JSON data still cannot be handled without further optimising this library.
+By default the ESP8266 TLS buffer is only large enough to handle a Twitter timeline API call requesting a single Tweet (count=1). However, the buffer can be increased [like this](https://github.com/micropython/micropython/commit/a47b8711316a4901bc81e1c46ce50de00207c47f) to build a special ESP8266 image that can handle larger payloads. Increasing the TLS record buffer to 8192 bytes enabled the handling of at least 10 tweets in testing.
 
 See above for instructions to use a pre-configured ESP8266 image which works around these limitations.
+
+Note: The ESP8266 interpreter cannot handle recursion beyond 19 stack levels, so very deeply nested JSON data still cannot be handled without further optimising this library.
 
 
 ## Why the name?
