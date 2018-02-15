@@ -1,6 +1,8 @@
 # Medea - Low-memory-overhead JSON tokenizer
 
-Medea can tokenize an arbitrary length of JSON with only a single byte of buffering, generating ([SAX-style](https://en.wikipedia.org/wiki/Simple_API_for_XML)) events to notify each structural element and its containing data.
+Medea can tokenize an arbitrary length of JSON with only a single byte of buffering, generating ([SAX-style](https://en.wikipedia.org/wiki/Simple_API_for_XML)) events to notify each structural element and its containing data. 
+
+Medea can also negotiate HTTPS connections to some example JSON api providers, such as Twitter and OpenWeatherMap, in order to retrieve and process fields from live JSON data.
 
 ## Examples
 
@@ -18,7 +20,7 @@ import examples.scripts.forecastTokenizeCached
 
 The examples which process live Twitter or OpenWeatherMap JSON documents from their API servers over HTTPS need a registered account with Twitter or OpenWeatherMap. Fill in the bearerId/appId details in medea/auth.py and this will authenticate the example scripts. It is assumed you will have configured an internet connection before running the applications although examples/scripts/twitterTimelinePollFields.py offers an example of negotiating wifi before accessing an online JSON resource. 
 
-Although Medea runs on CPython and ESP32 as regular python modules loaded from the filesystem, on ESP8266 it needs to be distributed as [frozen modules](http://docs.micropython.org/en/v1.9.3/unix/reference/constrained.html). Otherwise there is not enough memory for the SSL socket handshake to complete. By default the ESP8266 TLS buffer is only large enough to handle a Twitter timeline API call requesting a single Tweet (count=1). However, the buffer can [be increased](https://github.com/micropython/micropython/commit/a47b8711316a4901bc81e1c46ce50de00207c47f) on ESP8266 to be able to handle larger payloads, for example increasing to 8192 bytes enabled the handling of at least 10 tweets in testing.
+See put.sh for a routine which uploads all the scripts and data to an ESP32 using Adafruit's ampy tool.
 
 
 ## Motivation
@@ -29,7 +31,12 @@ On an internet-of-things device like the ESP8266 (Cockle) this means complex onl
 
 ## Limitations
 
-The biggest limitation Medea faces is recursion depth from nested items inside items. The ESP8266 interpreter cannot handle recursion beyond 19 stack levels, so very deeply nested JSON data still cannot be handled without further optimising this library.
+The ESP8266 interpreter cannot handle recursion beyond 19 stack levels, so very deeply nested JSON data still cannot be handled without further optimising this library.
+
+Although Medea runs on CPython and ESP32 as regular python modules loaded from the filesystem, HTTPS JSON processing on ESP8266 requires that medea is installed as [frozen modules](http://docs.micropython.org/en/v1.9.3/unix/reference/constrained.html). Otherwise there is not enough memory for the SSL socket handshake to complete. 
+
+By default the ESP8266 TLS buffer is only large enough to handle a Twitter timeline API call requesting a single Tweet (count=1). However, the buffer can [be increased](https://github.com/micropython/micropython/commit/a47b8711316a4901bc81e1c46ce50de00207c47f) on ESP8266 to be able to handle larger payloads, for example increasing to 8192 bytes enabled the handling of at least 10 tweets in testing.
+
 
 # Why the name?
 
