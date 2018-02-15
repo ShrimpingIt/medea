@@ -16,7 +16,7 @@ import examples.scripts.twitterTimelineTokenizeCached
 import examples.scripts.forecastTokenizeCached
 ```
 
-To process Twitter API or OpenWeatherMap JSON documents, you will have to register your application and get a bearerId or appId, and fill in the details in medea/auth.py, for the URLs to be properly authenticated.
+The examples which process live Twitter or OpenWeatherMap JSON documents from their API servers over HTTPS need a registered account with Twitter or OpenWeatherMap. Fill in the bearerId/appId details in medea/auth.py and this will authenticate the example scripts. It is assumed you will have configured an internet connection before running the applications although examples/scripts/twitterTimelinePollFields.py offers an example of negotiating wifi before accessing an online JSON resource. 
 
 Although Medea runs on CPython and ESP32 as regular python modules loaded from the filesystem, on ESP8266 it needs to be distributed as [frozen modules](http://docs.micropython.org/en/v1.9.3/unix/reference/constrained.html). Otherwise there is not enough memory for the SSL socket handshake to complete. By default the ESP8266 TLS buffer is only large enough to handle a Twitter timeline API call requesting a single Tweet (count=1). However, the buffer can [be increased](https://github.com/micropython/micropython/commit/a47b8711316a4901bc81e1c46ce50de00207c47f) on ESP8266 to be able to handle larger payloads, for example increasing to 8192 bytes enabled the handling of at least 10 tweets in testing.
 
