@@ -1,4 +1,4 @@
-wifiName = None
-wifiPass = None
-twitterBearerId = b''
-weatherAppId = ""
+wifiName = b""
+wifiPass = b""
+twitterBearerId = b""
+weatherAppId = b""
