@@ -14,7 +14,7 @@ twitterHeaders = (
 
 def createTwitterUrl(apiPath, getParams):
     url = twitterBaseUrl + apiPath + "?"
-    url += "&".join(["{}={}".format(key, value) for key, value in getParams.items()])
+    url += "&".join(["{}={}".format(key, value) for key,value in getParams.items()])
     gc.collect()
     return url
 
@@ -23,7 +23,7 @@ def createTwitterTimelineUrl(screen_name, count=1, **k):
     params = dict(
         screen_name=screen_name,
         count=count,
-        include_rts="false",
+        include_rts = "false",
         tweet_mode="compat",
     )
     params.update(k)
@@ -34,7 +34,7 @@ def createTwitterSearchUrl(text, count=1, **k):
     params = dict(
         q=text,
         count=count,
-        include_entities="false",
+        include_entities = "false",
     )
     params.update(k)
     return createTwitterUrl("search/tweets.json", params)
