@@ -1,6 +1,6 @@
 # Medea - Low-memory-overhead JSON tokenizer
 
-Medea can tokenize an arbitrary length of JSON with only a single byte of buffering, generating ([SAX-style](https://en.wikipedia.org/wiki/Simple_API_for_XML)) events to notify each structural element and its containing data. 
+Medea is a Micropython and CPython-compatible library which can tokenize an arbitrary length of JSON with only a single byte of buffering, generating ([SAX-style](https://en.wikipedia.org/wiki/Simple_API_for_XML)) events to notify each structural element and its containing data. 
 
 Medea can also negotiate HTTPS connections to some example JSON api providers, such as Twitter and OpenWeatherMap, in order to retrieve and process fields from live JSON data.
 
@@ -8,7 +8,7 @@ Medea can also negotiate HTTPS connections to some example JSON api providers, s
 
 If JSON is parsed in the conventional Micropython way ( see [ujson.loads()](https://docs.micropython.org/en/latest/esp8266/library/ujson.html#ujson.loads) ) then an in-memory structure is created. A root ancestor dict or list is the parent of contained child elements. Those children can then be parents of further data structures. All these descendants accumulate in memory as the JSON is decoded.
 
-On an internet-of-things device like the ESP8266 (Cockle) this means complex online API structures such as the OpenWeatherMap API or Twitter are impossible to decode because the all the descendants cannot be stored in memory. For some verbose JSON services, even constructing a single string to pass into the ```json.loads()``` call would exceed the memory, before creating any children at all.
+On an internet-of-things device like the ESP8266 this means complex online API structures such as the OpenWeatherMap API or Twitter are impossible to decode because the all the descendants cannot be stored in memory. For some verbose JSON services, even constructing a single string to pass into the ```json.loads()``` call would exceed the memory, before creating any children at all.
 
 ## Examples
 
@@ -39,7 +39,7 @@ A pre-configured image suitable which works around the ESP8266 limitations noted
 
 Use the standard `esptool` [instructions](https://docs.micropython.org/en/latest/esp8266/esp8266/tutorial/intro.html) to upload the image.
 
-Remember to add your own authentication values. You can run a test case interactively as follows (note credentials are bytestrings, prefixed with b, and the values below will not work, they have to be YOUR credentials). 
+Remember to add your own authentication values. After installing the special firmware, you can run a test case interactively as follows (note credentials are bytestrings, prefixed with b, and the values below will not work, they have to be YOUR credentials). 
 
 ```python
 import medea.auth
