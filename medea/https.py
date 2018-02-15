@@ -89,7 +89,7 @@ def processHttpHeaders(stream):
     # extract content-length header
     while contentLength is None:
         byte = next(stream)
-        while byte == key[keyPos]: # bytes continue to match
+        while chr(byte).lower() == chr(key[keyPos]): # bytes continue to match
             byte = next(stream)
             keyPos += 1
             if keyPos == keyLen:
@@ -125,9 +125,8 @@ def createContentByteGeneratorFactory(*a, **k):
         """Yield+send delegation Based on answer shared at https://stackoverflow.com/questions/48584098/yield-based-equivalent-to-python3-yield-from-delegation-without-losing-send"""
         byteGenerator = upstreamGeneratorFactory()
         contentLength = processHttpHeaders(byteGenerator)
-        byteGenerator.send(contentLength) # signal byte count remaining
         try:
-            value = next(byteGenerator)
+            value = byteGenerator.send(contentLength)  # signal byte count remaining
         except StopIteration:
             pass
         else:
