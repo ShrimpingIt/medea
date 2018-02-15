@@ -14,5 +14,5 @@ def createUrl(apiPath, getParams):
 def createCityUrl(city="Morecambe", country="uk"):
     return createUrl("forecast", dict(
         q="{},{}".format(city, country),
-        appid=weatherAppId,
+        appid=weatherAppId.decode('utf-8'),
     ))
