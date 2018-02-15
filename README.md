@@ -50,6 +50,18 @@ from examples.scripts.twitterTimelinePollFields import loop
 loop()
 ```
 
+...or for OpenWeatherMap...
+
+```python
+import medea.auth
+medea.auth.wifiName=b"MyNetwork"
+medea.auth.wifiPass=b"MyPassword"
+medea.auth.weatherAppId=b"cebed89626876436487"
+from examples.scripts.forecastPollFields import loop
+loop()
+```
+
+
 ## ESP8266 Limitations
 
 Although Medea runs on CPython and ESP32 as regular python modules loaded from the filesystem, HTTPS JSON processing on ESP8266 requires that medea is installed as [frozen modules](http://docs.micropython.org/en/v1.9.3/unix/reference/constrained.html). Otherwise there is not enough memory for the SSL socket handshake to complete. 
