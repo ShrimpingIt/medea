@@ -26,7 +26,7 @@ import examples.scripts.forecastTokenizeCached
 
 The examples which process live Twitter or OpenWeatherMap JSON documents from their API servers over HTTPS need Wifi and a registered account with Twitter or OpenWeatherMap. On ESP8266 a special build with Frozen Modules an increased size TLS buffer is needed (see pre-built image available below). 
 
-Most example scripts assume you have configured an internet connection before running them. However, twitterTimelinePollFields.py shows how to negotiate wifi before accessing an online JSON resource. 
+Most example scripts assume you have configured an internet connection before running them. However, twitterTimelinePollFields.py and forecastPollFields.py show how to negotiate wifi before accessing an online JSON resource. 
 
 ## ESP32 Upload
 
@@ -35,7 +35,7 @@ See put.sh for a Linux (and probably Mac)-compatible console script which upload
 
 ## ESP8266 Pre-configured Image
 
-A pre-configured image suitable which works around the ESP8266 limitations noted below is available at http://shrimping.it/project/medea/ based on Micropython 1.9.3 with medea onboard as frozen modules and an 8192byte TLS buffer to allow larger HTTPS payloads (e.g. > 10 tweets). 
+A pre-configured image suitable which works around the ESP8266 limitations noted below, based on [5d0d12c9](https://github.com/ShrimpingIt/medea/tree/5d0d12c9e25965c26c06c7a3d223ab4aa80f05a0) is available at http://shrimping.it/project/medea/ based on Micropython 1.9.3 with medea onboard as frozen modules and an 8192byte TLS buffer to allow larger HTTPS payloads (e.g. at least 10 tweets from a Twitter timeline, at least 8x 3-hourly OpenWeatherMap forecasts).
 
 Use the standard `esptool` [instructions](https://docs.micropython.org/en/latest/esp8266/esp8266/tutorial/intro.html) to upload the image.
 
