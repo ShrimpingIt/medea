@@ -9,4 +9,5 @@ def run():
     for tok, val in tokenizer.tokenizeValuesNamed("rain"):
         print(tok, val)
 
-timeit(run)
+if __name__ == "__main__":
+    timeit(run)
