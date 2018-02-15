@@ -68,7 +68,7 @@ Although Medea runs on CPython and ESP32 as regular python modules loaded from t
 
 By default the ESP8266 TLS buffer is only large enough to handle a Twitter timeline API call requesting a single Tweet (count=1). However, the buffer can be increased [like this](https://github.com/micropython/micropython/commit/a47b8711316a4901bc81e1c46ce50de00207c47f) to build a special ESP8266 image that can handle larger payloads. Increasing the TLS record buffer to 8192 bytes enabled the handling of at least 10 tweets in testing.
 
-See above for instructions to use a pre-configured ESP8266 image which works around these limitations.
+See above for instructions to get hold of a pre-configured ESP8266 image which includes these fixes built-in to the firmware.
 
 Note: The ESP8266 interpreter cannot handle recursion beyond 19 stack levels, so very deeply nested JSON data still cannot be handled without further optimising this library.
 
