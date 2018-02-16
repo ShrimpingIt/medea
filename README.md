@@ -89,6 +89,11 @@ See above for instructions to get hold of a pre-configured ESP8266 image which i
 
 Note: The ESP8266 interpreter cannot handle recursion beyond 19 stack levels, so very deeply nested JSON data still cannot be handled without further optimising this library.
 
+## Future Developments and Ideas
+
+It would be good to test support for Google APIs such as the [location service](https://developers.google.com/maps/documentation/geolocation/intro) or the [journey time calculator](https://developers.google.com/maps/documentation/distance-matrix/start).
+
+Combined, these could create a nice ambient display of what time you need to leave for a routine journey e.g. to get the kids from school, given current traffic conditions. It would do this by connecting to Wifi, synchronising the system clock over NTP, work out the next school pickup time, submit the Mac Address of the Wifi access point to get a location, then ask the Google journey time calculator what time you would have to leave to arrive on time, like this [reference journey time URL](https://maps.googleapis.com/maps/api/distancematrix/json?units=imperial&origins=LA31RX,UK&destinations=Lancaster%20University,UK&mode=driving&arrival_time=1519558015&key=AIsEkfaskjhfB1CoENBmC8bVy-LWqkFswmS0Js9w32CK0) (a valid Google Developer key should be substituted as the last parameter). 
 
 ## Why the name?
 
