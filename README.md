@@ -91,9 +91,28 @@ Note: The ESP8266 interpreter cannot handle recursion beyond 19 stack levels, so
 
 ## Future Developments and Ideas
 
+### Google API example
+
 It would be good to test support for Google APIs such as the [location service](https://developers.google.com/maps/documentation/geolocation/intro) or the [journey time calculator](https://developers.google.com/maps/documentation/distance-matrix/start).
 
 Combined, these could create a nice ambient display of what time you need to leave for a routine journey e.g. to get the kids from school, given current traffic conditions. It would do this by connecting to Wifi, synchronising the system clock over NTP, work out the next school pickup time, submit the Mac Address of the Wifi access point to get a location, then ask the Google journey time calculator what time you would have to leave to arrive on time, like this [reference journey time URL](https://maps.googleapis.com/maps/api/distancematrix/json?units=imperial&origins=LA31RX,UK&destinations=Lancaster%20University,UK&mode=driving&arrival_time=1519558015&key=AIsEkfaskjhfB1CoENBmC8bVy-LWqkFswmS0Js9w32CK0) (a valid Google Developer key should be substituted as the last parameter). 
+
+### Path language
+
+A path language something like lodash.get or jspath would allow sub-parts of the JSON document to have tokenizers returned.
+
+This could support invocations like the following...
+
+tokenizer.tokenizeBelow('result.value[0].baz'])
+
+...or in expanded form...
+
+tokenizer.tokenizeBelow(['result','value','0', 'baz'])
+
+...which would leave open possibly of ure.regex support...
+
+tokenizer.tokenizeBelow(['result','value','0', ure.compile("foo|bar")])
+
 
 ## Why the name?
 
