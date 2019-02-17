@@ -3,8 +3,8 @@ from medea.https import createContentByteGeneratorFactory
 from medea.twitter import twitterHeaders, createTwitterTimelineUrl
 
 
-def visitor(*a):
-    print(a)
+def visitor(tok, val):
+    print(tok, val)
 
 
 def run():
