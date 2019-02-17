@@ -10,21 +10,21 @@ NUM = b"number"
 BOOL = b"boolean"
 NUL = b"null"
 
-singleQuoteByte = const(39) # ord("'")
-doubleQuoteByte = const(34) # ord('"')
-backslashByte = const(92) # ord("\\")
-openObjectByte = const(123) # ord('{')
-closeObjectByte = const(125) # ord('}')
-openArrayByte = const(91) # ord('[')
-closeArrayByte = const(93) #ord(']')
-colonByte = const(58) #ord(':')
-commaByte = const(44) #ord(',')
-firstTrueByte = const(116) #ord('t')
-firstFalseByte = const(102) # ord('f')
-firstNullByte = const(110) #ord('n')
-minusByte = const(45) #ord('-')
+singleQuoteByte = const(39)     # ord("'")
+doubleQuoteByte = const(34)     # ord('"')
+backslashByte = const(92)       # ord('\\')
+openObjectByte = const(123)     # ord('{')
+closeObjectByte = const(125)    # ord('}')
+openArrayByte = const(91)       # ord('[')
+closeArrayByte = const(93)      # ord(']')
+colonByte = const(58)           # ord(':')
+commaByte = const(44)           # ord(',')
+firstTrueByte = const(116)      # ord('t')
+firstFalseByte = const(102)     # ord('f')
+firstNullByte = const(110)      # ord('n')
+minusByte = const(45)           # ord('-')
 
-numberMetaBytes = b'.xeEb'
+numberMetaBytes = b'.xeEb' # non-digit characters allowable in numbers
 spaceBytes = b' \n\t\r'
 digitBytes = b'0123456789'
 
@@ -56,13 +56,17 @@ class Tokenizer():
 
     def unsetStream(self):
         if self.byteGenerator is not None:
+            print("Terminating byteGenerator with StopIteration")
             self.byteGenerator.throw(StopIteration)
             self.byteGenerator = None
 
     def resetStream(self):
-        self.unsetStream()
-        self.byteGenerator = self.byteGeneratorFactory()
-        self.byteGenerator.send(None)
+        try:
+            self.unsetStream()
+            self.byteGenerator = self.byteGeneratorFactory()
+            self.byteGenerator.send(None)
+        except StopIteration:
+            return
 
     def tokenize(self, gen=None):
         if gen is None:
@@ -135,8 +139,8 @@ class Tokenizer():
 
         return self.generateFromNamed(names, generatorFactory)
 
-    def dumpTokens(self):
-        for token in self.tokenize():
+    def dumpTokens(self, gen=None):
+        for token in self.tokenize(gen):
             print(token)
 
     def tokenizeValue(self, gen=None):
@@ -265,4 +269,4 @@ class Tokenizer():
             gen = self.byteGenerator
         for literalByte in bytesLike:
             if gen.send(True) != literalByte:
-                raise AssertionError("Expecting keyword {}" + bytesLike)
+                raise AssertionError("No literal {}".format(bytesLike))
