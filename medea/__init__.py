@@ -75,60 +75,63 @@ class Tokenizer():
         yield from self.tokenizeValue(gen)
 
     def generateFromNamed(self, names, tokenGeneratorFactory, gen=None):
-        """For each json key/value pair with key in ``names``,
-        tokenizes the value using tokenGeneratorFactory"""
-        self.resetStream()
-        if gen is None:
-            gen = self.byteGenerator
+        try:
+            """For each json key/value pair with key in ``names``,
+            tokenizes the value using tokenGeneratorFactory"""
+            self.resetStream()
+            if gen is None:
+                gen = self.byteGenerator
 
-        names = [bytes(name, 'ascii') for name in names]
-        namesLen = len(names)
-        namesEnds = [len(name) - 1 for name in names]
+            names = [bytes(name, 'ascii') for name in names]
+            namesLen = len(names)
+            namesEnds = [len(name) - 1 for name in names]
 
-        while True:
-            delimiter = gen.send(True)
-            if delimiter is singleQuoteByte or delimiter is doubleQuoteByte:
-                candidates = names
-                candidatesEnds = namesEnds
-                candidatesLen = namesLen
-                charPos = 0
-                match = None
-                while match is None and candidatesLen > 0:
-                    candidatePos = candidatesLen
-                    while match is None and candidatePos > 0:
-                        candidatePos -= 1
-                        if charPos == candidatesEnds[candidatePos]:
-                            match = candidates[candidatePos]
-                        elif candidates[candidatePos][charPos] != gen.send(False):  # TODO cache result of this call
-                            candidatesLen -= 1
-                            if candidatesLen == 0:
-                                break
-                            else:
-                                if candidates is names:  # lazy duplicate list then excise candidate
-                                    candidates = list(names)
-                                    candidatesEnds = list(namesEnds)
-                                del candidates[candidatePos]
-                                del candidatesEnds[candidatePos]
-                    charPos += 1
-                    gen.send(True)
-                else:  # either match found or candidates eliminated
-                    if match is None:
-                        continue
-                try:
-                    if gen.send(False) is not delimiter:
-                        continue
-                finally:
-                    gen.send(True)
-                while gen.send(False) in spaceBytes:
-                    gen.send(True)
-                try:
-                    if gen.send(False) is not colonByte:
-                        continue
-                finally:
-                    gen.send(True)
-                while gen.send(False) in spaceBytes:
-                    gen.send(True)
-                yield from tokenGeneratorFactory(match.decode('ascii'))
+            while True:
+                delimiter = gen.send(True)
+                if delimiter is singleQuoteByte or delimiter is doubleQuoteByte:
+                    candidates = names
+                    candidatesEnds = namesEnds
+                    candidatesLen = namesLen
+                    charPos = 0
+                    match = None
+                    while match is None and candidatesLen > 0:
+                        candidatePos = candidatesLen
+                        while match is None and candidatePos > 0:
+                            candidatePos -= 1
+                            if charPos == candidatesEnds[candidatePos]:
+                                match = candidates[candidatePos]
+                            elif candidates[candidatePos][charPos] != gen.send(False):  # TODO cache result of this call
+                                candidatesLen -= 1
+                                if candidatesLen == 0:
+                                    break
+                                else:
+                                    if candidates is names:  # lazy duplicate list then excise candidate
+                                        candidates = list(names)
+                                        candidatesEnds = list(namesEnds)
+                                    del candidates[candidatePos]
+                                    del candidatesEnds[candidatePos]
+                        charPos += 1
+                        gen.send(True)
+                    else:  # either match found or candidates eliminated
+                        if match is None:
+                            continue
+                    try:
+                        if gen.send(False) is not delimiter:
+                            continue
+                    finally:
+                        gen.send(True)
+                    while gen.send(False) in spaceBytes:
+                        gen.send(True)
+                    try:
+                        if gen.send(False) is not colonByte:
+                            continue
+                    finally:
+                        gen.send(True)
+                    while gen.send(False) in spaceBytes:
+                        gen.send(True)
+                    yield from tokenGeneratorFactory(match.decode('ascii'))
+        except StopIteration:
+            return
 
     def tokenizeValuesNamed(self, names, gen=None):
         if type(names) is str:
