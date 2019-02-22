@@ -59,7 +59,7 @@ def generateTweets(tokenizer, gen):
     """Yields (id, full_text) pairs for tweets extracted from a Twitter API tokenizer"""
     
     reportNames = ["id", "full_text"] # process child values having these names
-    suppressNames = ["user", "media"] # throw away all descendants of these names (suppresses "id" descendants of these keys)
+    suppressNames = ["user", "media", "quoted_status"] # throw away all descendants of these names (suppresses "id" descendants of these keys)
     
     def fieldGeneratorFactory(fieldName, gen):
         """If key matches intended fields, extracts string value from gen, otherwise throws away value"""
