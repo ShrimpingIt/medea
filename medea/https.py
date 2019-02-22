@@ -143,7 +143,7 @@ def createContentByteGeneratorFactory(*a, **k):
                     raise
                 except BaseException:
                     try:
-                        value = byteGenerator.throw(*sys.exc_info())
+                        value = byteGenerator.throw(*sys.exc_info()) # exc_info not available in Micropython's sys module
                     except StopIteration:
                         break
                 else:
