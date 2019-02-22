@@ -2,7 +2,7 @@ import gc
 
 from medea.auth import twitterBearerId
 from medea import Tokenizer,STR,NUM
-from medea.https import createContentByteGeneratorFactory
+from medea.https import generateContentBytes
 
 twitterBaseUrl = "https://api.twitter.com/1.1/"
 
@@ -44,27 +44,26 @@ def createTwitterSearchUrl(text, count=1, **k):
     params.update(k)
     return createTwitterUrl("search/tweets.json", params)
 
-def createTimelineTokenizer(account, count=1):
-    """Create a JSON tokenizer from the Twitter Timeline API"""
+def generateTimelineBytes(account, count=1, buf=None):
+    """Get bytes from the Twitter Timeline API"""
     twitterUrl = createTwitterTimelineUrl(account, count, tweet_mode="extended")
-    byteGeneratorFactory = createContentByteGeneratorFactory(twitterUrl, twitterHeaders)
-    return Tokenizer(byteGeneratorFactory)
+    return generateContentBytes(twitterUrl, twitterHeaders, buf=buf)
 
-def createSearchTokenizer(text, count=1):
+def generateSearchBytes(text, count=1, buf=None):
     """Create a JSON tokenizer from the Twitter Search API"""
     twitterUrl = createTwitterSearchUrl(text, count, tweet_mode="extended")
-    byteGeneratorFactory = createContentByteGeneratorFactory(twitterUrl, twitterHeaders)
-    return Tokenizer(byteGeneratorFactory)
+    return generateContentBytes(twitterUrl, twitterHeaders, buf=buf)
 
-def generateTweets(tokenizer):
+def generateTweets(tokenizer, gen):
+    # initialise byteGenerator
     """Yields (id, full_text) pairs for tweets extracted from a Twitter API tokenizer"""
     
     reportNames = ["id", "full_text"] # process child values having these names
     suppressNames = ["user", "media"] # throw away all descendants of these names (suppresses "id" descendants of these keys)
     
-    def fieldGeneratorFactory(fieldName):
-        """If key matches intended fields, extracts string value, otherwise throws away value"""
-        valueTokens = tokenizer.tokenizeValue()
+    def fieldGeneratorFactory(fieldName, gen):
+        """If key matches intended fields, extracts string value from gen, otherwise throws away value"""
+        valueTokens = tokenizer.tokenizeValue(gen, True)
         if fieldName in suppressNames:
             for tok, val in valueTokens: # consume tokens from stream
                 pass
@@ -81,12 +80,12 @@ def generateTweets(tokenizer):
         else:
             raise ValueError # specific named values expected by this callback 
 
-    fieldGenerator = tokenizer.generateFromNamed(reportNames + suppressNames, fieldGeneratorFactory)
+    tokenGenerator = tokenizer.tokenizeValuesNamed(reportNames + suppressNames, fieldGeneratorFactory, gen)
     
     while True:
         try:
-            _, tweetId = next(fieldGenerator)
-            _, tweetText = next(fieldGenerator)
+            _, tweetId = next(tokenGenerator)
+            _, tweetText = next(tokenGenerator)
         except StopIteration: # raised by next() when generator stops 
             return
         else:

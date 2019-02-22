@@ -8,8 +8,7 @@ def visitor(tok, val):
 
 def run():
     weatherUrl = weather.createCityUrl()
-    byteGeneratorFactory = https.createByteGeneratorFactory(weatherUrl)
-    byteGenerator = byteGeneratorFactory()
+    byteGenerator = https.generateResponseBytes(weatherUrl)
 
     try:
         while True:

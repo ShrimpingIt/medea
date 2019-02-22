@@ -8,12 +8,11 @@ def visitor(tok, val):
 
 def run():
     weatherUrl = weather.createCityUrl()
-    byteGeneratorFactory = https.createContentByteGeneratorFactory(weatherUrl)
-    byteGenerator = byteGeneratorFactory()
+    weatherBytes = https.generateContentBytes(weatherUrl)
 
     try:
         while True:
-            sys.stdout.write(chr(next(byteGenerator)))
+            sys.stdout.write(chr(next(weatherBytes)))
     except StopIteration:
         pass
 

@@ -1,15 +1,29 @@
 [
   {
-    "created_at": "Wed Feb 14 20:55:01 +0000 2018",
-    "id": 963879275324760070,
-    "id_str": "963879275324760070",
-    "text": "Just spoke to Governor Rick Scott. We are working closely with law enforcement on the terrible Florida school shooting.",
+    "created_at": "Fri Feb 22 00:27:07 +0000 2019",
+    "id": 1098740934588751872,
+    "id_str": "1098740934588751872",
+    "full_text": "We are here to honor the extraordinary contributions of African-Americans to every aspect of American Life, History and Culture. From the earliest days of this Nation, African-American Leaders, Pioneers, &amp; Visionaries have uplifted &amp; inspired our Country...https:\/\/t.co\/VuFLkfd12j",
     "truncated": false,
+    "display_text_range": [
+      0,
+      288
+    ],
     "entities": {
       "hashtags": [],
       "symbols": [],
       "user_mentions": [],
-      "urls": []
+      "urls": [
+        {
+          "url": "https:\/\/t.co\/VuFLkfd12j",
+          "expanded_url": "https:\/\/www.pscp.tv\/w\/bz84FjFvTlFsTFJub1dwUXd8MW5BSkV5WnZReVZKTD-9H6bOj1BMJn10RM6rLsvhbiBe5jMVdnYLfw7jbjdD?t=15s",
+          "display_url": "pscp.tv\/w\/bz84FjFvTlFs\u2026",
+          "indices": [
+            265,
+            288
+          ]
+        }
+      ]
     },
     "source": "\u003ca href=\"http:\/\/twitter.com\/download\/iphone\" rel=\"nofollow\"\u003eTwitter for iPhone\u003c\/a\u003e",
     "in_reply_to_status_id": null,
@@ -44,27 +58,27 @@
         }
       },
       "protected": false,
-      "followers_count": 47856734,
+      "followers_count": 58473336,
       "friends_count": 45,
-      "listed_count": 83922,
+      "listed_count": 100454,
       "created_at": "Wed Mar 18 13:46:38 +0000 2009",
-      "favourites_count": 24,
-      "utc_offset": -18000,
-      "time_zone": "Eastern Time (US & Canada)",
+      "favourites_count": 9,
+      "utc_offset": null,
+      "time_zone": null,
       "geo_enabled": true,
       "verified": true,
-      "statuses_count": 36938,
+      "statuses_count": 40623,
       "lang": "en",
       "contributors_enabled": false,
       "is_translator": false,
       "is_translation_enabled": true,
       "profile_background_color": "6D5C18",
-      "profile_background_image_url": "http:\/\/pbs.twimg.com\/profile_background_images\/530021613\/trump_scotland__43_of_70_cc.jpg",
-      "profile_background_image_url_https": "https:\/\/pbs.twimg.com\/profile_background_images\/530021613\/trump_scotland__43_of_70_cc.jpg",
+      "profile_background_image_url": "http:\/\/abs.twimg.com\/images\/themes\/theme1\/bg.png",
+      "profile_background_image_url_https": "https:\/\/abs.twimg.com\/images\/themes\/theme1\/bg.png",
       "profile_background_tile": true,
       "profile_image_url": "http:\/\/pbs.twimg.com\/profile_images\/874276197357596672\/kUuht00m_normal.jpg",
       "profile_image_url_https": "https:\/\/pbs.twimg.com\/profile_images\/874276197357596672\/kUuht00m_normal.jpg",
-      "profile_banner_url": "https:\/\/pbs.twimg.com\/profile_banners\/25073877\/1517463920",
+      "profile_banner_url": "https:\/\/pbs.twimg.com\/profile_banners\/25073877\/1550087458",
       "profile_link_color": "1B95E0",
       "profile_sidebar_border_color": "BDDCAD",
       "profile_sidebar_fill_color": "C5CEC0",
@@ -83,10 +97,10 @@
     "place": null,
     "contributors": null,
     "is_quote_status": false,
-    "retweet_count": 10309,
-    "favorite_count": 48338,
+    "retweet_count": 19019,
+    "favorite_count": 68075,
     "favorited": false,
     "retweeted": false,
+    "possibly_sensitive": false,
     "lang": "en"
   }
-]

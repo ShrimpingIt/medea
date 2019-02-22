@@ -1,10 +1,9 @@
-from medea.https import createByteGeneratorFactory
+from medea.https import generateResponseBytes
 from medea.twitter import twitterHeaders, createTwitterTimelineUrl
 import sys
 
 twitterUrl = createTwitterTimelineUrl('realDonaldTrump', tweet_mode="extended")
-byteGeneratorFactory = createByteGeneratorFactory(twitterUrl, twitterHeaders)
-byteGenerator = byteGeneratorFactory()
+byteGenerator = generateResponseBytes(twitterUrl, twitterHeaders)
 
 try:
     while True:

@@ -1,4 +1,4 @@
-from medea.util import dumpTokens
-from medea.file import createFileByteGeneratorFactory
+from medea.file import tokenizeFile
 
-dumpTokens(createFileByteGeneratorFactory('examples/data/emptyArray.json'))
+for item in tokenizeFile('examples/data/emptyArray.json'):
+    print(item)

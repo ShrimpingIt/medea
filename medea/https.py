@@ -3,81 +3,68 @@ import gc
 from medea import defaultBufferSize
 from medea.agnostic import socket, ssl, SocketTimeoutError
 
-def createByteGeneratorFactory(url, headers=None, timeout=1.0, buffer=None, bufferSize=defaultBufferSize):
-    def byteGeneratorFactory():
-        _, _, host, path = url.split('/', 3)
-        nonlocal buffer, bufferSize
-        if buffer is None:
-            buffer = bytearray(bufferSize)
-        bufferSize = len(buffer)
-        try:
-            addr = socket.getaddrinfo(host, 443)[0][-1]
-        except IndexError:
-            raise Exception("No Wifi")
-        s = socket.socket()
-        s.connect(addr)
-        if hasattr(s, 'settimeout'):
-            s.settimeout(timeout)
-        try:
-            s = ssl.wrap_socket(s)
-            s.write(b'GET /')
-            s.write(path.encode('ascii'))
-            s.write(b' HTTP/1.1\r\nHost: ')
-            s.write(host.encode('ascii'))
-            s.write(b'\r\nUser-Agent: Cockle\r\n')
-            if headers is not None:
-                for header in headers:
-                    s.write(header)
-            s.write(b'\r\n')
-            msg = False
-
-            remaining = None
-            while True:
-                if sys.implementation.name == "micropython":
-                    if remaining is None or bufferSize < remaining:
-                        count = s.readinto(buffer)
-                    else: # read into memoryview shorter than backing buffer
-                        count = s.readinto(memoryview(buffer)[:remaining])
+def generateResponseBytes(url, headers=None, timeout=1.0, buf=None, bufferSize=defaultBufferSize):
+    _, _, host, path = url.split('/', 3)
+    buf, bufferSize
+    if buf is None:
+        buf = bytearray(bufferSize)
+    bufferSize = len(buf)
+    try:
+        addr = socket.getaddrinfo(host, 443)[0][-1]
+    except IndexError:
+        raise Exception("No Wifi")
+    s = socket.socket()
+    s.connect(addr)
+    if hasattr(s, 'settimeout'):
+        s.settimeout(timeout)
+    try:
+        s = ssl.wrap_socket(s)
+        s.write(b'GET /')
+        s.write(path.encode('ascii'))
+        s.write(b' HTTP/1.1\r\nHost: ')
+        s.write(host.encode('ascii'))
+        s.write(b'\r\nUser-Agent: Cockle\r\n')
+        if headers is not None:
+            for header in headers:
+                s.write(header)
+        s.write(b'\r\n')
+        remaining = None
+        while True:
+            if sys.implementation.name == "micropython":
+                if remaining is None or bufferSize < remaining:
+                    count = s.readinto(buf)
+                else: # read into memoryview shorter than backing buffer
+                    count = s.readinto(memoryview(buf)[:remaining])
+            else:
+                if remaining is None or bufferSize < remaining:
+                    count = s.read(bufferSize, buf)
                 else:
-                    if remaining is None or bufferSize < remaining:
-                        count = s.read(bufferSize, buffer)
-                    else:
-                        count = s.read(remaining, memoryview(buffer)[:remaining])
-                pos = 0
-                if count > 0:
-                    while pos < count:
-                        nextByte = buffer[pos]
-                        if msg:
-                            pos += 1
-                            if remaining is not None:
-                                remaining -= 1
-                        msg = yield nextByte
-                        if msg is None:
-                            msg = True
-                        else:
-                            if msg is True or msg is False:
-                                pass
-                            elif type(msg) is int: # allow signalling content length
-                                remaining = msg
-                                msg = False # byte will be replayed
-                else:
-                    break
-        except StopIteration:
-            pass # this is OK, expected
-        except GeneratorExit:
-            pass  # this is OK, expected
-        except SocketTimeoutError:
-            pass  # gave up awaiting for more from the socket
-        except BaseException as e:
-            print("Unexpected exception")
-            print(e)
-            raise
-        """
-        finally:
-            s.close()
-        """
-    return byteGeneratorFactory
-
+                    count = s.read(remaining, memoryview(buf)[:remaining])
+            pos = 0
+            if count > 0:
+                while pos < count:
+                    msg = yield buf[pos]
+                    if type(msg) is int: # allow signalling content length
+                        remaining = msg + 1 # CH mystifying off-by-one error
+                        msg = True # byte will be replayed
+                    if msg is not True:
+                        pos += 1
+                        if remaining is not None:
+                            remaining -= 1
+            else:
+                break
+    except StopIteration:
+        pass # this is OK, expected
+    except GeneratorExit:
+        pass  # this is OK, expected
+    except SocketTimeoutError:
+        pass  # gave up awaiting for more from the socket
+    except BaseException as e:
+        print("Unexpected exception")
+        print(e)
+        raise
+    finally:
+        s.close()
 
 def processHttpHeaders(stream):
     contentLength = None
@@ -115,40 +102,11 @@ def processHttpHeaders(stream):
 
     return contentLength
 
-
-def createContentByteGeneratorFactory(*a, **k):
+def generateContentBytes(*a, **k):
     """Creates a HTTPS stream, parses the HTTP header to get the content-length,
     skips to the start of the HTTP content section, then returns a derived generator
     which stops iteration after the proper count of content bytes"""
-    upstreamGeneratorFactory = createByteGeneratorFactory(*a, **k)
-    def byteGeneratorFactory():
-        """Yield+send delegation Based on answer shared at https://stackoverflow.com/questions/48584098/yield-based-equivalent-to-python3-yield-from-delegation-without-losing-send"""
-        byteGenerator = upstreamGeneratorFactory()
-        contentLength = processHttpHeaders(byteGenerator)
-        try:
-            value = byteGenerator.send(contentLength)  # signal byte count remaining
-        except StopIteration:
-            pass
-        else:
-            contentPos = 0
-            while True:
-                try:
-                    sent = yield value
-                    if sent is not False:
-                        contentPos += 1
-                        if contentPos >= contentLength:
-                            break
-                except GeneratorExit:
-                    byteGenerator.close()
-                    raise
-                except BaseException:
-                    try:
-                        value = byteGenerator.throw(*sys.exc_info()) # exc_info not available in Micropython's sys module
-                    except StopIteration:
-                        break
-                else:
-                    try:
-                        value = byteGenerator.send(sent)
-                    except StopIteration:
-                        break
-    return byteGeneratorFactory
+    byteGenerator = generateResponseBytes(*a, **k)
+    contentLength = processHttpHeaders(byteGenerator)
+    byteGenerator.send(contentLength)
+    yield from byteGenerator

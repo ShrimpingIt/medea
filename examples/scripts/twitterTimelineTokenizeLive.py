@@ -1,16 +1,11 @@
-from medea.util import visit
-from medea.https import createContentByteGeneratorFactory
-from medea.twitter import twitterHeaders, createTwitterTimelineUrl
-
-
-def visitor(tok, val):
-    print(tok, val)
-
+from medea import Tokenizer
+from medea.twitter import generateTimelineBytes
 
 def run():
-    twitterUrl = createTwitterTimelineUrl('realDonaldTrump', count=1)
-    byteGeneratorFactory = createContentByteGeneratorFactory(twitterUrl, twitterHeaders)
-    visit(byteGeneratorFactory, visitor)
-
+    tokenizer = Tokenizer()
+    byteGenerator = generateTimelineBytes('realDonaldTrump')
+    tokenGenerator = tokenizer.tokenizeValue(byteGenerator)
+    for tok, val in tokenGenerator:
+        print(tok, val)
 
 run()
