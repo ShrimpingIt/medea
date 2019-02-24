@@ -21,5 +21,6 @@ def run():
     finally:
         timelineBytes.close()
 
+
 if __name__ == "__main__":
     timeit(run)

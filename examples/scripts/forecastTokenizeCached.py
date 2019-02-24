@@ -1,12 +1,13 @@
-from medea.util import visit
-from medea.file import createFileByteGeneratorFactory
+from medea import Tokenizer
+from medea.file import generateFileBytes
 
-
-def visitor(tok, val):
-    print(tok, val)
 
 def run():
-    visit(createFileByteGeneratorFactory('examples/data/weathermap.json'), visitor)
+    tokenizer = Tokenizer()
+    byteGenerator = generateFileBytes('examples/data/weathermap.json')
+    for tok, val in tokenizer.tokenizeValue(byteGenerator):
+        print(tok, val)
+
 
 if __name__ == "__main__":
     run()

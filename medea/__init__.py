@@ -31,12 +31,6 @@ digitBytes = b'0123456789'
 defaultBufferSize = 512
 
 
-def reverse_enumerate(sequence):
-    n = len(sequence) - 1
-    for elem in sequence[::-1]:
-        yield n, elem
-        n -= 1
-
 class Tokenizer():
     """Tokenizes a source of bytes, (e.g. a file, socket or byte array), as a JSON value (an object, array or primitive)
 
@@ -61,6 +55,9 @@ class Tokenizer():
         try:
             """Tokenizes the value of each json key/value pair with key in ``names`` with provided tokenGeneratorFactory"""
 
+            if type(names) == str:
+                names = [names]
+
             names = [bytes(name, 'ascii') for name in names]
             namesLen = len(names)
             namesEnds = [len(name) - 1 for name in names]
@@ -69,7 +66,8 @@ class Tokenizer():
             while True:
                 delimiter = next(gen)
                 if delimiter is singleQuoteByte or delimiter is doubleQuoteByte:
-                    candidates[:] = (True for name in names) # reset candidate keys
+                    for namePos in range(namesLen):
+                        candidates[namePos] = True # reset candidate keys
                     candidateCount = namesLen
                     charPos = 0
                     matchPos = None
@@ -101,10 +99,6 @@ class Tokenizer():
             return
 
 
-    def dumpTokens(self, gen):
-        for token in self.tokenize(gen):
-            print(token)
-
     def tokenizeValue(self, gen, repeat=None):
         try:
             byte = gen.send(repeat)
@@ -127,7 +121,7 @@ class Tokenizer():
                     byte = (yield from self.skipLiteral(b"null", gen, True))
                     return (yield (NUL, None))
                 else:
-                    raise AssertionError("Unexpected character {}".format(chr(byte)))
+                    raise AssertionError("Unexpected character {}".format(chr(gen.send(True))))
         except StopIteration:
             return
 
@@ -138,8 +132,8 @@ class Tokenizer():
             else:
                 yield (OPEN, ARR)
             next(gen)
-            char = (yield from self.skipSpace(gen, repeat=True))
             while True:
+                char = (yield from self.skipSpace(gen, repeat=True))
                 if char is closeArrayByte:
                     yield (CLOSE, ARR)
                     next(gen)

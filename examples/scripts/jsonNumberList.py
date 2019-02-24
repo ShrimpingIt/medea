@@ -1,4 +1,4 @@
 from medea.file import tokenizeFile
 
-for item in tokenizeFile('examples/data/numberList.json'):
-    print(item)
+for tok, val in tokenizeFile('examples/data/numberList.json'):
+    print(tok, val)

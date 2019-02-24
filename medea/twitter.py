@@ -57,7 +57,7 @@ def generateSearchBytes(text, count=1, buf=None):
 def generateTweets(tokenizer, gen):
     # initialise byteGenerator
     """Yields (id, full_text) pairs for tweets extracted from a Twitter API tokenizer"""
-    
+
     reportNames = ["id", "full_text"] # process child values having these names
     suppressNames = ["user", "media", "quoted_status"] # throw away all descendants of these names (suppresses "id" descendants of these keys)
     
@@ -80,12 +80,12 @@ def generateTweets(tokenizer, gen):
         else:
             raise ValueError # specific named values expected by this callback 
 
-    tokenGenerator = tokenizer.tokenizeValuesNamed(reportNames + suppressNames, fieldGeneratorFactory, gen)
+    fieldGenerator = tokenizer.tokenizeValuesNamed(reportNames + suppressNames, fieldGeneratorFactory, gen)
     
     while True:
         try:
-            _, tweetId = next(tokenGenerator)
-            _, tweetText = next(tokenGenerator)
+            _, tweetId = next(fieldGenerator)
+            _, tweetText = next(fieldGenerator)
         except StopIteration: # raised by next() when generator stops 
             return
         else:

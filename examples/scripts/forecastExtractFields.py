@@ -6,9 +6,11 @@ def run():
 
     tokenizer = Tokenizer()
     weatherBytes = https.generateContentBytes(weatherUrl)
-    weatherBytes.send(None)
 
-    for tok, val in tokenizer.tokenizeValuesNamed("rain", weatherBytes):
+    def tokenizeDescendants(name, gen):
+        yield from tokenizer.tokenizeValue(gen, True)
+
+    for tok, val in tokenizer.tokenizeValuesNamed("wind", tokenizeDescendants, weatherBytes):
         print(tok, val)
 
 if __name__ == "__main__":
