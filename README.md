@@ -4,7 +4,7 @@ Medea is a Micropython and CPython-compatible Python library which can tokenize 
 
 Medea can also negotiate HTTPS connections to some example JSON api providers, such as Twitter and OpenWeatherMap, in order to retrieve and process fields from live JSON data.
 
-A mature javascript-based library which parses JSON using SAX-style events is [https://github.com/dscape/clarinet](clarinet).
+A mature javascript-based library which parses JSON using SAX-style events is [clarinet](https://github.com/dscape/clarinet).
 
 ## Motivation
 
