@@ -1,8 +1,10 @@
 # Medea - Low-memory-overhead JSON tokenizer
 
-Medea is a Micropython and CPython-compatible library which can tokenize an arbitrary length of JSON with only a single byte of buffering, generating ([SAX-style](https://en.wikipedia.org/wiki/Simple_API_for_XML)) events to notify each structural element and its containing data. 
+Medea is a Micropython and CPython-compatible Python library which can tokenize an arbitrary length of JSON with only a single byte of buffering, generating ([SAX-style](https://en.wikipedia.org/wiki/Simple_API_for_XML)) events notifying each structural element and its contained data. 
 
 Medea can also negotiate HTTPS connections to some example JSON api providers, such as Twitter and OpenWeatherMap, in order to retrieve and process fields from live JSON data.
+
+A mature javascript-based library which parses JSON using SAX-style events is [https://github.com/dscape/clarinet](clarinet).
 
 ## Motivation
 
