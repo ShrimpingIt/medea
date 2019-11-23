@@ -1,5 +1,6 @@
 # CH added to suppress Jetbrains Project files
 .idea
+.vscode
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
