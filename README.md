@@ -6,6 +6,14 @@ Medea can also negotiate HTTPS connections to some example JSON api providers, s
 
 A mature javascript-based library which parses JSON using SAX-style events is [clarinet](https://github.com/dscape/clarinet).
 
+## Invocations
+
+Cd to the root of this repository and you can run:
+
+* `python3 -m pytest` to exercise the test suite
+* `python3 examples/scripts/twitterTimelineExtractFieldsCached.py` to process an example cached Trump tweet
+* `python3 examples/scripts/` to process an example cached Trump tweet
+
 ## Motivation
 
 If JSON is parsed in the conventional Micropython way ( see [ujson.loads()](https://docs.micropython.org/en/latest/esp8266/library/ujson.html#ujson.loads) ) then an in-memory structure is created. A root ancestor dict or list is the parent of contained child elements. Those children can then be parents of further data structures. All these descendants accumulate in memory as the JSON is decoded.

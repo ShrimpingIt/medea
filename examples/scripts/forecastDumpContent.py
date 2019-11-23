@@ -3,6 +3,7 @@ import medea.https as https
 import medea.weather as weather
 
 def run():
+    """Dump only the Content bytes from an OpenWeatherMap forecast HTTP Response"""
     weatherUrl = weather.createCityUrl()
     weatherBytes = https.generateContentBytes(weatherUrl)
 

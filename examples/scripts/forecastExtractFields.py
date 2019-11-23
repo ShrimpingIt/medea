@@ -2,6 +2,7 @@ from medea import Tokenizer, https, weather
 from examples.scripts import timeit
 
 def run():
+    """Tokenizes object values named 'wind' from an OpenWeatherMap forecast API response"""
     weatherUrl = weather.createCityUrl()
 
     tokenizer = Tokenizer()
