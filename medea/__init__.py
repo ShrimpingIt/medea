@@ -30,12 +30,13 @@ digitBytes = b'0123456789'
 
 defaultBufferSize = 512
 
+
 class Tokenizer():
-    """This class wraps a source of bytes, like a file or a socket, and can tokenize it as a JSON value, (object, array or primitive)
-        on each call to tokenize, the byteGeneratorFactory is called to create a byteGenerator.
+    """Tokenizes a source of bytes, (e.g. a file, socket or byte array), as a JSON value (an object, array or primitive)
+
         A conformant byte generator accepts...
-        * send(True) get a byte AND increment the stream position
-        * send(False) to get a byte WITHOUT incrementing (a peek).
+        * gen.send({not True})  READ the next character (next(gen) is equivalent to gen.send(None))
+        * gen.send(True)        REPEAT the previous character
 
         Bytes are traversed for JSON symbols, triggering
         JSON VALUE EVENTS; pairs composed of (token, value) as follows.
@@ -50,222 +51,203 @@ class Tokenizer():
         (NULL, nullBytes)
     """
 
-    def __init__(self, byteGeneratorFactory):
-        self.byteGeneratorFactory = byteGeneratorFactory
-        self.byteGenerator = None
-
-    def unsetStream(self):
-        if self.byteGenerator is not None:
-            self.byteGenerator.throw(StopIteration)
-            self.byteGenerator = None
-
-    def resetStream(self):
-        self.unsetStream()
-        self.byteGenerator = self.byteGeneratorFactory()
-        self.byteGenerator.send(None)
-
-    def tokenize(self, gen=None):
-        if gen is None:
-            self.resetStream()
-            gen = self.byteGenerator
-        yield from self.tokenizeValue(gen)
-
-    def generateFromNamed(self, names, tokenGeneratorFactory, gen=None):
+    def tokenizeValuesNamed(self, names, tokenGeneratorFactory, gen):
         try:
-            """For each json key/value pair with key in ``names``,
-            tokenizes the value using tokenGeneratorFactory"""
-            self.resetStream()
-            if gen is None:
-                gen = self.byteGenerator
+            """Tokenizes the value of each json key/value pair with key in ``names`` with provided tokenGeneratorFactory"""
+
+            if type(names) == str:
+                names = [names]
 
             names = [bytes(name, 'ascii') for name in names]
             namesLen = len(names)
             namesEnds = [len(name) - 1 for name in names]
+            candidates = [True] * len(names)
 
             while True:
-                delimiter = gen.send(True)
+                delimiter = next(gen)
                 if delimiter is singleQuoteByte or delimiter is doubleQuoteByte:
-                    candidates = names
-                    candidatesEnds = namesEnds
-                    candidatesLen = namesLen
+                    for namePos in range(namesLen):
+                        candidates[namePos] = True # reset candidate keys
+                    candidateCount = namesLen
                     charPos = 0
-                    match = None
-                    while match is None and candidatesLen > 0:
-                        candidatePos = candidatesLen
-                        while match is None and candidatePos > 0:
-                            candidatePos -= 1
-                            if charPos == candidatesEnds[candidatePos]:
-                                match = candidates[candidatePos]
-                            elif candidates[candidatePos][charPos] != gen.send(False):  # TODO cache result of this call
-                                candidatesLen -= 1
-                                if candidatesLen == 0:
-                                    break
-                                else:
-                                    if candidates is names:  # lazy duplicate list then excise candidate
-                                        candidates = list(names)
-                                        candidatesEnds = list(namesEnds)
-                                    del candidates[candidatePos]
-                                    del candidatesEnds[candidatePos]
-                        charPos += 1
-                        gen.send(True)
-                    else:  # either match found or candidates eliminated
-                        if match is None:
-                            continue
-                    try:
-                        if gen.send(False) is not delimiter:
-                            continue
-                    finally:
-                        gen.send(True)
-                    while gen.send(False) in spaceBytes:
-                        gen.send(True)
-                    try:
-                        if gen.send(False) is not colonByte:
-                            continue
-                    finally:
-                        gen.send(True)
-                    while gen.send(False) in spaceBytes:
-                        gen.send(True)
-                    yield from tokenGeneratorFactory(match.decode('ascii'))
+                    matchPos = None
+                    while candidateCount > 0:
+                        char = next(gen)
+                        if char == delimiter:
+                            break
+                        else:
+                            if matchPos is not None: # completed match, but not followed by delimiter
+                                candidates[matchPos] = False # remove from candidates
+                                candidateCount -= 1
+                                matchPos = None
+                            namePos = 0
+                            for candidate in candidates:
+                                if candidate:
+                                    if names[namePos][charPos] == char:
+                                        if namesEnds[namePos] == charPos:
+                                            matchPos = namePos
+                                    else:
+                                        candidates[namePos] = False
+                                        candidateCount -= 1
+                                namePos += 1
+                            charPos += 1
+                    if matchPos is not None:
+                        if (yield from self.skipSpace(gen)) == colonByte:
+                            yield from self.skipSpace(gen)
+                            yield from tokenGeneratorFactory(names[matchPos].decode('ascii'), gen)
         except StopIteration:
             return
 
-    def tokenizeValuesNamed(self, names, gen=None):
-        if type(names) is str:
-            names = [names]
 
-        def generatorFactory(name):
-            yield from self.tokenizeValue(gen)
-
-        return self.generateFromNamed(names, generatorFactory)
-
-    def dumpTokens(self, gen=None):
-        for token in self.tokenize(gen):
-            print(token)
-
-    def tokenizeValue(self, gen=None):
-        if gen is None:
-            gen = self.byteGenerator
-        self.skipSpace()
-        byte = gen.send(False)
-        if byte is not None:
-            if byte is openArrayByte:
-                return (yield from self.tokenizeArray(gen))
-            elif byte is openObjectByte:
-                return (yield from self.tokenizeObject(gen))
-            elif byte is singleQuoteByte or byte is doubleQuoteByte:
-                return (yield from self.tokenizeString(STR, gen))
-            elif byte in digitBytes or byte is minusByte:
-                return (yield from self.tokenizeNumber(gen))
-            elif byte is firstTrueByte:
-                self.skipLiteral(b"true")
-                return (yield (BOOL, True))
-            elif byte is firstFalseByte:
-                self.skipLiteral(b"false")
-                return (yield (BOOL, False))
-            elif byte is firstNullByte:
-                self.skipLiteral(b"null")
-                return (yield (NUL, None))
-            else:
-                raise AssertionError("Unexpected character {}".format(byte))
-
-    def tokenizeArray(self, gen=None):
-        if gen is None:
-            gen = self.byteGenerator
-        if gen.send(True) != openArrayByte:
-            raise AssertionError("Array should begin with [")
-        yield (OPEN, ARR)
-        while True:
-            self.skipSpace()
-            char = gen.send(False)
-            if char is closeArrayByte:
-                gen.send(True)
-                return (yield (CLOSE, ARR))
-            else:
-                yield from self.tokenizeValue(gen)
-                if gen.send(False) is commaByte:
-                    gen.send(True)
-                    continue
-
-    def tokenizeObject(self, gen=None):
-        if gen is None:
-            gen = self.byteGenerator
-        if gen.send(True) != openObjectByte:
-            raise AssertionError("Objects begin {")
-        else:
-            yield (OPEN, OBJ)
-        while True:
-            self.skipSpace()
-            peek = gen.send(False)
-            if peek is closeObjectByte:
-                gen.send(True)
-                return (yield (CLOSE, OBJ))
-            elif peek is singleQuoteByte or peek is doubleQuoteByte:
-                yield from self.tokenizeKey(gen)
-                self.skipSpace()
-                if gen.send(True) is not colonByte:
-                    raise AssertionError("Expecting : after key")
-                self.skipSpace()
-                yield from self.tokenizeValue(gen)
-            else:
-                raise AssertionError("Keys begin \" or '")
-
-            self.skipSpace()
-            peek = gen.send(False)
-            if peek is closeObjectByte:
-                pass
-            elif peek is commaByte:
-                gen.send(True)
-            else:
-                raise AssertionError("Pairs precede , or }")
-
-    def tokenizeString(self, token, gen=None):
-        if gen is None:
-            gen = self.byteGenerator
-        delimiter = gen.send(True)
-        if not (delimiter is singleQuoteByte or delimiter is doubleQuoteByte):
-            raise AssertionError("{} starts with ' or \"".format(token))
-        accumulator = bytearray()
-        peek = gen.send(False)
-        while peek != delimiter:
-            if peek is backslashByte:  # backslash escaping means consume two chars
-                accumulator.append(gen.send(True))
-            accumulator.append(gen.send(True))
-            peek = gen.send(False)
-        gen.send(True)  # drop delimiter
-        yield (token, bytes(accumulator).decode('ascii'))
-
-    def tokenizeKey(self, gen=None):
-        return self.tokenizeString(KEY, gen)
-
-    def tokenizeNumber(self, gen=None):
-        if gen is None:
-            gen = self.byteGenerator
-        accumulator = []
-        accumulator.append(gen.send(True))
-        if accumulator[-1] is minusByte:
-            accumulator.append(gen.send(True))
-        if not (accumulator[-1] in digitBytes):
-            raise AssertionError("Numbers begin [0-9] after optional - sign")
-        while True:
-            peek = gen.send(False)
-            if peek in digitBytes or peek in numberMetaBytes:
-                accumulator.append(gen.send(True))
-            else:
-                if len(accumulator):
-                    yield (NUM, bytes(accumulator).decode('ascii'))
-                    break
+    def tokenizeValue(self, gen, repeat=None):
+        try:
+            byte = gen.send(repeat)
+            if byte is not None:
+                if byte is openArrayByte:
+                    return (yield from self.tokenizeArray(gen, True))
+                elif byte is openObjectByte:
+                    return (yield from self.tokenizeObject(gen, True))
+                elif byte is singleQuoteByte or byte is doubleQuoteByte:
+                    return (yield from self.tokenizeString(gen, True))
+                elif byte in digitBytes or byte is minusByte:
+                    return (yield from self.tokenizeNumber(gen, True))
+                elif byte is firstTrueByte:
+                    byte = (yield from self.skipLiteral(b"true", gen, True))
+                    return (yield (BOOL, True))
+                elif byte is firstFalseByte:
+                    byte = (yield from self.skipLiteral(b"false", gen, True))
+                    return (yield (BOOL, False))
+                elif byte is firstNullByte:
+                    byte = (yield from self.skipLiteral(b"null", gen, True))
+                    return (yield (NUL, None))
                 else:
-                    raise AssertionError("Invalid number")
+                    raise AssertionError("Unexpected character {}".format(chr(gen.send(True))))
+        except StopIteration:
+            return
 
-    def skipSpace(self, gen=None):  # TODO CH make consistent with skipLiteral - eliminate empty yield syntax
-        if gen is None:
-            gen = self.byteGenerator
-        while gen.send(False) in spaceBytes:
-            gen.send(True)
+    def tokenizeArray(self, gen, repeat=None):
+        try:
+            if gen.send(repeat) != openArrayByte:
+                raise AssertionError("Array should begin with [ not {}".format(chr(gen.send(True))))
+            else:
+                yield (OPEN, ARR)
+            next(gen)
+            while True:
+                char = (yield from self.skipSpace(gen, repeat=True))
+                if char is closeArrayByte:
+                    yield (CLOSE, ARR)
+                    next(gen)
+                    return
+                else:
+                    yield from self.tokenizeValue(gen, repeat=True)
+                char = (yield from self.skipSpace(gen, repeat=True))
+                if char is commaByte:
+                    char = next(gen)
+                    continue
+        except StopIteration:
+            return
 
-    def skipLiteral(self, bytesLike, gen=None):
-        if gen is None:
-            gen = self.byteGenerator
-        for literalByte in bytesLike:
-            if gen.send(True) != literalByte:
-                raise AssertionError("No literal {}".format(bytesLike))
+    def tokenizeObject(self, gen, repeat=None):
+        try:
+            if gen.send(repeat) != openObjectByte:
+                raise AssertionError("Objects begin { not {}".format(chr(gen.send(True))))
+            yield (OPEN, OBJ)
+            byte = next(gen)
+            while True:
+                byte = (yield from self.skipSpace(gen, repeat=True))
+                if byte is singleQuoteByte or byte is doubleQuoteByte:
+                    yield from self.tokenizeKey(gen, repeat=True)
+                    if (yield from self.skipSpace(gen, repeat=True)) is not colonByte:
+                        raise AssertionError("Expecting : after key not {}".format(chr(gen.send(True))))
+                    byte = (yield from self.skipSpace(gen)) # consume colon and following spaces
+                    byte = (yield from self.tokenizeValue(gen, repeat=True))
+                elif byte is closeObjectByte:
+                    yield (CLOSE, OBJ)
+                    return next(gen)
+                else:
+                    raise AssertionError("Expecting \" ' or ] not {}".format(chr(gen.send(True))))
+                byte = (yield from self.skipSpace(gen, repeat=True))
+                if byte is closeObjectByte:
+                    yield (CLOSE, OBJ)
+                    return next(gen)
+                elif byte is commaByte:
+                    next(gen)
+                    continue
+                else:
+                    raise AssertionError("Pairs precede , or }} not {}".format(chr(gen.send(True))))
+        except StopIteration:
+            return
+
+    def tokenizeString(self, gen, repeat=None):
+        yield from self.tokenizeQuoted(STR, gen, repeat)
+
+    def tokenizeQuoted(self, token, gen, repeat=None):
+        try:
+            delimiter = gen.send(repeat)
+            if not (delimiter is singleQuoteByte or delimiter is doubleQuoteByte):
+                raise AssertionError("{} starts with ' or \" not {}".format(token, chr(gen.send(True))))
+            accumulator = bytearray()
+            while True:
+                byte = next(gen)
+                if byte == delimiter:
+                    yield (token, bytes(accumulator).decode('ascii'))
+                    return next(gen)
+                else:
+                    accumulator.append(byte)
+                    if byte is backslashByte:  # consume escaped char
+                        accumulator.append(next(gen))
+        except StopIteration:
+            return
+
+    def tokenizeKey(self, gen, repeat=None):
+        yield from self.tokenizeQuoted(KEY, gen, repeat)
+
+    def tokenizeNumber(self, gen, repeat=None):
+        accumulator = []
+        try:
+            accumulator.append(gen.send(repeat))
+            if accumulator[-1] is minusByte: # get next byte if prefixed with minus
+                accumulator.append(next(gen))
+            if not (accumulator[-1] in digitBytes):
+                raise AssertionError("Numbers begin [0-9] after optional - sign not {}".format(chr(gen.send(True))))
+            while True:
+                byte = next(gen)
+                if byte in digitBytes or byte in numberMetaBytes:
+                    accumulator.append(byte)
+                else:
+                    break
+        except StopIteration:
+            pass
+        finally:
+            if len(accumulator):
+                num = bytes(accumulator).decode('ascii')
+                try:
+                    num = int(num)
+                except ValueError:
+                    num = float(num)
+                yield (NUM, num)
+            else:
+                raise AssertionError("Invalid number")
+            return
+
+
+    def skipSpace(self, gen, repeat=None):
+        yield from ()
+        try:
+            byte = gen.send(repeat)
+            while byte in spaceBytes:
+                byte = next(gen)
+            return byte
+        except StopIteration:
+            return
+
+    def skipLiteral(self, bytesLike, gen, repeat=None):
+        yield from ()
+        try:
+            byte = gen.send(repeat)
+            for literalByte in bytesLike:
+                if byte != literalByte:
+                    raise AssertionError("No literal {}".format(bytesLike))
+                byte = next(gen)
+        except StopIteration:
+            return byte

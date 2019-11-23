@@ -1,13 +1,11 @@
-from medea.https import createContentByteGeneratorFactory, processHttpHeaders
-from medea.twitter import twitterHeaders, createTwitterTimelineUrl
 import sys
+from medea.twitter import generateTimelineBytes
 
-twitterUrl = createTwitterTimelineUrl('realDonaldTrump')
-byteGeneratorFactory = createContentByteGeneratorFactory(twitterUrl, twitterHeaders)
-byteGenerator = byteGeneratorFactory()
+byteGenerator = generateTimelineBytes('realDonaldTrump')
 
 try:
     while True:
         sys.stdout.write(chr(next(byteGenerator)))
 except StopIteration:
     pass
+

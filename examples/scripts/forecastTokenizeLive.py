@@ -1,13 +1,15 @@
-from medea.util import visit
-import medea.https as https
-import medea.weather as weather
+from medea import Tokenizer
+from medea.https import generateContentBytes
+from medea.weather import createCityUrl
 
-def visitor(tok, val):
-    print(tok, val)
 
 def run():
-    weatherUrl = weather.createCityUrl()
-    visit(https.createContentByteGeneratorFactory(weatherUrl), visitor)
+    tokenizer = Tokenizer()
+    weatherUrl = createCityUrl()
+    byteGenerator = generateContentBytes(weatherUrl)
+    for tok, val in tokenizer.tokenizeValue(byteGenerator):
+        print(tok, val)
+
 
 if __name__ == "__main__":
     run()

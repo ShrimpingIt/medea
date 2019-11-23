@@ -13,7 +13,6 @@ def const(val):
 
 from time import sleep, time
 
-
 def ticks_ms():
     return int(time() * 1000)
 

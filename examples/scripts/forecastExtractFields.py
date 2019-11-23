@@ -4,9 +4,13 @@ from examples.scripts import timeit
 def run():
     weatherUrl = weather.createCityUrl()
 
-    tokenizer = Tokenizer(https.createContentByteGeneratorFactory(weatherUrl))
+    tokenizer = Tokenizer()
+    weatherBytes = https.generateContentBytes(weatherUrl)
 
-    for tok, val in tokenizer.tokenizeValuesNamed("rain"):
+    def tokenizeDescendants(name, gen):
+        yield from tokenizer.tokenizeValue(gen, True)
+
+    for tok, val in tokenizer.tokenizeValuesNamed("wind", tokenizeDescendants, weatherBytes):
         print(tok, val)
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@ import sys
 from time import sleep
 from examples.scripts.forecastExtractFields import run
 
+
 def loop():
     if sys.platform == "esp8266" or sys.platform == "esp32":
         from medea.auth import wifiName, wifiPass
@@ -14,6 +15,7 @@ def loop():
         run()
         gc.collect()
         sleep(120)
+
 
 if __name__ == "__main__":
     loop()
