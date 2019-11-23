@@ -18,10 +18,10 @@ Each tokenizeXXX() generator method accepts a byteGenerator and a boolean repeat
 
 To tokenize a JSON stream, the bytes have to be retrieved from an in-memory array, from a file, over HTTP or some other mechanism. Tokenizers are designed to consume bytes from generators which fulfil this contract:
 
-* Calling next(gen) or gen.step(None) yields the next byte. This will move the cursor position to the next unread byte then return its value.
-* Calling gen.step(True) yields a repeat of the previous byte. This will read the current byte and leave the cursor position unchanged.
+* Calling next(gen) or gen.send(None) yields the next byte. This will move the cursor position to the next unread byte then return its value.
+* Calling gen.send(True) yields a repeat of the previous byte. This will read the current byte and leave the cursor position unchanged.
     - Note: Asking for a repeat byte before the first byte has been read will raise an error.
-* When the stream is exhausted, a call to next() or gen.step() will raise StopIteration
+* When the stream is exhausted, a call to next() or gen.send() will raise StopIteration
 
 In general, they can be treated as ordinary generators, except for the Tokenizer-specific handling of the repeat-byte signal.
 
