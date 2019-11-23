@@ -1,14 +1,31 @@
 # Medea - Low-memory-overhead JSON tokenizer
 
-Medea is a Micropython and CPython-compatible library which can tokenize an arbitrary length of JSON with only a single byte of buffering, generating ([SAX-style](https://en.wikipedia.org/wiki/Simple_API_for_XML)) events to notify each structural element and its containing data. 
+Medea is a Micropython and CPython-compatible Python library which can tokenize an arbitrary length of JSON with only a single byte of buffering, generating ([SAX-style](https://en.wikipedia.org/wiki/Simple_API_for_XML)) events notifying each structural element and its contained data. 
 
 Medea can also negotiate HTTPS connections to some example JSON api providers, such as Twitter and OpenWeatherMap, in order to retrieve and process fields from live JSON data.
+
+A mature javascript-based library which parses JSON using SAX-style events is [clarinet](https://github.com/dscape/clarinet).
 
 ## Motivation
 
 If JSON is parsed in the conventional Micropython way ( see [ujson.loads()](https://docs.micropython.org/en/latest/esp8266/library/ujson.html#ujson.loads) ) then an in-memory structure is created. A root ancestor dict or list is the parent of contained child elements. Those children can then be parents of further data structures. All these descendants accumulate in memory as the JSON is decoded.
 
-On an internet-of-things device like the ESP8266 this means complex online API structures such as the OpenWeatherMap API or Twitter are impossible to decode because the all the descendants cannot be stored in memory. For some verbose JSON services, even constructing a single string to pass into the ```json.loads()``` call would exceed the memory, before creating any children at all.
+On a limited-memory internet-of-things device like the ESP8266 this means complex online API structures such as the OpenWeatherMap API or Twitter are impossible to decode because the descendants cannot be stored in memory. For some verbose JSON services, even constructing a single string to pass into the ```json.loads()``` call would exceed the memory, before creating any children at all.
+
+By contrast Medea processes the JSON source as a stream, throwing away all bytes and keeping just enough information to be able to detect and notify each complete 'token' found in the stream.  It can consume data from file, HTTPS, HTTP or socket streams using a buffer which can be as small as a single byte!
+
+## Tokenizing
+
+Bytes are traversed for JSON symbols, triggering \<JSON VALUE EVENTS>; pairs composed of (token, value) as follows.
+  * (OPEN, OBJ)            : a new object, to be followed by a sequence of zero or more pairs like (KEY, keybytes) \<JSON VALUE EVENTS>
+  * (CLOSE, OBJ)           : finishes the key/value pairs of the last-opened object
+  * (OPEN, ARR)            : a new array, to be followed by a sequence of zero or more \<JSON VALUE EVENTS>
+  * (CLOSE, ARR)           : finishes the last array which was opened
+  * (KEY, keyBytes)        : the next value which follows is a value embedded in an object with the given KEY
+  * (NUM, numberBytes)     : a whole or floating point number
+  * (BOOL, booleanBytes)   : a `true` or `false` value
+  * (STR, stringBytes)     : a text value
+  * (NUL, nullBytes)       : corresponding with JSON `null` value
 
 ## Examples
 
@@ -24,7 +41,9 @@ import examples.scripts.twitterTimelineTokenizeCached
 import examples.scripts.forecastTokenizeCached
 ```
 
-The examples which process live Twitter or OpenWeatherMap JSON documents from their API servers over HTTPS need Wifi and a registered account with Twitter or OpenWeatherMap. On ESP8266 a special build with Frozen Modules an increased size TLS buffer is needed (see pre-built image available below). 
+The examples which process live Twitter or OpenWeatherMap JSON documents from their API servers over HTTPS need a Wifi connection. Getting a [Twitter developer account](https://apps.twitter.com/) allows you to apply for a [bearer token](https://www.npmjs.com/package/get-twitter-bearer-token) for your device to use. For forecasts you can apply for an [OpenWeatherMap app id](https://openweathermap.org/appid). 
+
+Note: On ESP8266 a special build with Frozen Modules an increased size TLS buffer is needed (see pre-built image available below). 
 
 Most example scripts assume you have configured an internet connection before running them. However, twitterTimelinePollFields.py and forecastPollFields.py show how to negotiate wifi before accessing an online JSON resource. 
 
@@ -35,11 +54,11 @@ See put.sh for a Linux (and probably Mac)-compatible console script which upload
 
 ## ESP8266 Pre-configured Image
 
-A pre-configured image suitable which works around the ESP8266 limitations noted below, based on [5d0d12c9](https://github.com/ShrimpingIt/medea/tree/5d0d12c9e25965c26c06c7a3d223ab4aa80f05a0) is available at http://shrimping.it/project/medea/ based on Micropython 1.9.3 with medea onboard as frozen modules and an 8192byte TLS buffer to allow larger HTTPS payloads (e.g. at least 10 tweets from a Twitter timeline, at least 8x 3-hourly OpenWeatherMap forecasts).
+A pre-configured image (based on version [5d0d12c9](https://github.com/ShrimpingIt/medea/tree/5d0d12c9e25965c26c06c7a3d223ab4aa80f05a0)) which works around the ESP8266 limitations noted below is available at http://shrimping.it/project/medea/ . It is based on the latest github at the time of writing with the `medea` library and examples onboard as frozen modules and a 8192byte TLS buffer to allow larger HTTPS payloads (e.g. at least 10 tweets from a Twitter timeline, at least a day's worth of 3-hourly OpenWeatherMap forecasts).
 
 Use the standard `esptool` [instructions](https://docs.micropython.org/en/latest/esp8266/esp8266/tutorial/intro.html) to upload the image.
 
-Remember to add your own authentication values. After installing the special firmware, you can run a test case interactively as follows (note credentials are bytestrings, prefixed with b, and the values below will not work, they have to be YOUR credentials). 
+Remember to add your own authentication values. After installing the special firmware, you can run test cases interactively as follows (note credentials are bytestrings, prefixed with b, and the values below will not work, they have to be YOUR credentials). 
 
 ```python
 import medea.auth
@@ -64,13 +83,37 @@ loop()
 
 ## ESP8266 Limitations
 
-Although Medea runs on CPython and ESP32 as regular python modules loaded from the filesystem, HTTPS JSON processing on ESP8266 requires that medea is installed as [frozen modules](http://docs.micropython.org/en/v1.9.3/unix/reference/constrained.html). Otherwise there is not enough memory for the SSL socket handshake to complete. 
+Although Medea runs on CPython and ESP32 as regular python modules loaded from the filesystem, HTTPS JSON processing on ESP8266 requires that medea is installed as [frozen modules](http://docs.micropython.org/en/v1.9.3/unix/reference/constrained.html). Otherwise there is [not enough memory for the SSL socket handshake to complete](https://forum.micropython.org/viewtopic.php?f=2&t=4356#p25465). 
 
-By default the ESP8266 TLS buffer is only large enough to handle a Twitter timeline API call requesting a single Tweet (count=1). However, the buffer can be increased [like this](https://github.com/micropython/micropython/commit/a47b8711316a4901bc81e1c46ce50de00207c47f) to build a special ESP8266 image that can handle larger payloads. Increasing the TLS record buffer to 8192 bytes enabled the handling of at least 10 tweets in testing.
+By default the standard ESP8266 TLS buffer is only large enough to handle a Twitter timeline API call requesting a single Tweet (count=1). However, the buffer can be increased [like this](https://github.com/micropython/micropython/commit/a47b8711316a4901bc81e1c46ce50de00207c47f) to build a special ESP8266 image that can handle larger payloads. Increasing the TLS record buffer to 8192 bytes enabled the handling of at least 10 tweets in testing.
 
 See above for instructions to get hold of a pre-configured ESP8266 image which includes these fixes built-in to the firmware.
 
 Note: The ESP8266 interpreter cannot handle recursion beyond 19 stack levels, so very deeply nested JSON data still cannot be handled without further optimising this library.
+
+## Future Developments and Ideas
+
+### Google API example
+
+It would be good to test support for Google APIs such as the [location service](https://developers.google.com/maps/documentation/geolocation/intro) or the [journey time calculator](https://developers.google.com/maps/documentation/distance-matrix/start).
+
+Combined, these could create a nice ambient display of what time you need to leave for a routine journey e.g. to get the kids from school, given current traffic conditions. It would do this by connecting to Wifi, synchronising the system clock over NTP, work out the next school pickup time, submit the Mac Address of the Wifi access point to get a location, then ask the Google journey time calculator what time you would have to leave to arrive on time, like this [reference journey time URL](https://maps.googleapis.com/maps/api/distancematrix/json?units=imperial&origins=LA31RX,UK&destinations=Lancaster%20University,UK&mode=driving&arrival_time=1519558015&key=AIsEkfaskjhfB1CoENBmC8bVy-LWqkFswmS0Js9w32CK0) (a valid Google Developer key should be substituted as the last parameter). 
+
+### Path language
+
+A path language something like lodash.get or jspath would allow sub-parts of the JSON document to have tokenizers returned.
+
+This could support invocations like the following...
+
+tokenizer.tokenizeBelow('result.value[0].baz'])
+
+...or in expanded form...
+
+tokenizer.tokenizeBelow(['result','value','0', 'baz'])
+
+...which would leave open possibly of ure.regex support...
+
+tokenizer.tokenizeBelow(['result','value','0', ure.compile("foo|bar")])
 
 
 ## Why the name?
